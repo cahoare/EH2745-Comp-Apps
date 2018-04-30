@@ -1,0 +1,39 @@
+import java.io.File;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+
+
+public class Run {
+
+	private static final String XmlFile = null;
+
+	public static void main(String[] args) {
+
+
+		// Structure
+		// Run allows EQ file to be added
+		// Calls the EQfile parser which creates the elements and then creates a database
+		// EQ file parser uses arraylists to hold the node lists and equipment lists. each equipment item has a type and string array of data. the information held in data is determined by type. 
+		
+		
+
+		try {
+			File EQFile = new File("Assignment_EQ_reduced.xml");
+			new ParseEQ(EQFile);
+			
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+	
+
+		
+		
+		
+	}
+
+}

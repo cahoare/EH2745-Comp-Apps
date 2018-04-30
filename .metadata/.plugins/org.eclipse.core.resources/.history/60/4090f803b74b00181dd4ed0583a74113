@@ -1,0 +1,32 @@
+import java.io.File;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+
+
+public class Run {
+
+	private static final String XmlFile = null;
+
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+		try {
+			File EQFile = new File("Assignment_EQ_reduced.xml");
+			new ParseEQ(EQFile);
+			
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+	
+
+		
+		
+		
+	}
+
+}

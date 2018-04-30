@@ -1,0 +1,222 @@
+import java.io.File; // Related to system in and out
+import java.util.*;
+
+import javax.xml.parsers.DocumentBuilderFactory; // Related to HTML file doc parsing
+import javax.xml.parsers.DocumentBuilder; 
+import org.w3c.dom.Document; 
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Node;
+import org.w3c.dom.Element;
+import equipment.*;
+
+import java.sql.*;
+
+// DO WE NEED TO CLOSE CONNECTIONS TO THE MAIN DATABASE? 
+// IS IT GOOD ARCHITECTURE FOR PARSE EQ TO DO BOTH??
+
+public class ParseEQ {
+
+	static File EQFile;
+	static ArrayList <NodeList> listEquip;
+	static ArrayList <EquipItem> allEquip;
+	
+	
+	// Equipment types
+	private static String [] equip = {"BaseVoltage","Substation", "VoltageLevel", "GeneratingUnit", "SynchronousMachine", "RegulatingControl", 
+			"PowerTransformer", "EnergyConsumer", "PowerTransformerEnd", "Breaker", "RatioTapChanger"}; 
+	// data types
+	private static String [][] dataNames= {{"rdf_ID", "VARCHAR (38)"}//0
+			{"NominalVoltage", "FLOAT (6,10)"} //1
+			{"Name", "VARCHAR(20)"} //2 *************IS THIS ENOUGH FOR NAME 
+			{"MaxOperatingP", "FLOAT (6,10)"} //3 
+			{"MinOperatingP", "FLOAT (6,10)"} //4
+			{"RatedS", "FLOAT (6,10)"} //5
+			{"P", "FLOAT (6,10)"} //6 - SSH values
+			{"Q", "FLOAT (6,10)"} //7 - SSH Values
+			{"TargetValue", "FLOAT (6,10)"} //8 - SSH values ******?
+			{"R", "FLOAT (6,10)"} //9
+			{"X", "FLOAT (6,10)"} //10
+			{"State", "BOOLEAN"} //11 - SSH values
+			{"Step", "INT"} //12 - SSH values
+			{"RDF_ID_Region", "VARCHAR (38)"}//13
+			{"RDF_ID_Substation", "VARCHAR (38)"} //14
+			{"RDF_ID_BaseVoltage", "VARCHAR (38)"} //15
+			{"RDF_ID_EquipmentContainer", "VARCHAR (38)"} //16
+			{"RDF_ID_GeneratingUnit", "VARCHAR (38)"}//17
+			{"RDF_ID_RegulatingControl", "VARCHAR (38)"} //18
+			{"RDF_ID_PowerTransformer", "VARCHAR (38)"} //19
+			{"RDF_ID_BaseVoltage", "VARCHAR (38)"}}; //20 - added to deal with CIM inconsistency
+			
+			
+			{, 
+				, 
+				};
+	// Hash table of date required for each type
+	private static int [][] dataIndex= {{0, 1}, 	// BaseVoltage							
+			{0,	2,	13},				// Substation					
+			{0,	2,	14,	15},			// VoltageLevel				
+			{0,	2,	3,	4,	16},		// Gen Unit		
+			{0,	2,	5,  17,	18,	16}, // SynchMachine. Remove 6 and 7 because they are SSH. ALSO REMOVE BASE VOLTAGE RDF (15). NOT THERE??
+			{0,	2},						// Reg Control - removed 14 SSH value 	
+			{0,	2,	16},				// Power Tx		
+			{0,	2,	16},				// Energy Con	 - Removed 15 ALSO NO BASE VOLTAGE . No 6 and 7 because SSH	
+			{0,	2,	9,  10, 19,	20},	// Power Tx End 		
+			{0,	2,	16},				// Breaker	- Removed 11 ALSO NO BASE VOLTAGE 	
+			{0,	2}}; 				// Ratio Tap Changer - Removed 12 SSH
+
+	
+	
+	// JDBC driver name and database URL - passed from Run
+	static String JDBC_DRIVER; 
+	static String DB_URL; 
+	static String DB_NAME;
+	
+	// Database credentials - passed from Run
+	static String USER; 
+	static String PASS;
+	
+	
+	
+	
+	public ParseEQ (File EQFile) {
+		this.EQFile = EQFile;
+		eqParse();	
+	
+	}
+
+	private static void eqParse () {
+		
+		
+		listEquip = new ArrayList<NodeList>(); 
+		allEquip = new ArrayList <EquipItem>();
+		
+		try {  // catch dbFactory exception
+			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance(); // parses XML file
+			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+			Document doc = dBuilder.parse(EQFile);  
+			doc.getDocumentElement().normalize(); // on this checks that each element only has text where it should be. If something has been out onto multiple lines will amend into each element. 
+
+			
+			for (int i=0; i<equip.length; i++) { // Search for each equipment type sequentially and add the list to the array
+				listEquip.add(doc.getElementsByTagName("cim:" + equip[i]));
+
+				for (int c=0; c < listEquip.get(i).getLength(); c++) { // build an item for each type within the list. item type corresponds to equip array
+					allEquip.add(new EquipItem(listEquip.get(i).item(c), i)) ;
+				}
+					
+			}
+		
+		
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+				
+	}
+
+	public static void dbBuild(String [] dbSetup){
+
+		
+		JDBC_DRIVER = dbSetup[0];
+		DB_URL = dbSetup[1];
+		USER = dbSetup[2];
+		PASS= dbSetup[3];
+		DB_NAME = dbSetup[4];
+		
+		Connection conn = null;
+		Statement stmt = null;
+		ResultSet resultSet = null;
+		
+		try{
+			// Register JDBC driver
+			Class.forName(JDBC_DRIVER);
+			// Open a connection
+			System.out.println("Connecting to database...");
+			conn = DriverManager.getConnection(DB_URL+"?user="+USER+"&password="+PASS+"&autoReconnect=true&useSSL=false");
+			
+			// Set-up the statement connection
+			stmt = conn.createStatement();
+			String sql; // Sql string used for statments 
+			
+			// Check if database exists and drop if it does
+			System.out.println("Checking if database exists...");
+			
+			resultSet = conn.getMetaData().getCatalogs();
+	        while (resultSet.next()) {
+
+	          String nameTest = resultSet.getString(1);
+	          nameTest = nameTest.toLowerCase(); 
+
+	          if(nameTest.equals(DB_NAME.toLowerCase())){
+	                System.out.println("Database exists, dropping database...");
+	                sql = "DROP DATABASE " + DB_NAME;
+	                stmt.executeUpdate(sql);
+	                System.out.println("Database dropped");
+	          }
+	        }
+	        
+	        
+	        // Create the database 
+	        System.out.println("Creating database...");
+	        sql = "CREATE DATABASE "  + DB_NAME;
+	        stmt.executeUpdate(sql);
+			System.out.println("Database created successfully...");
+			
+			
+			// 	Connect to the new database
+			conn = DriverManager.getConnection(DB_URL+DB_NAME+"?user="+USER+"&password="+PASS+"&autoReconnect=true&useSSL=false");
+			stmt = conn.createStatement();
+			System.out.println("Connected to database " + DB_NAME +"...");
+		
+			//	Create tables in database
+			for(int i=0; i<equip.length; i++) {
+				sql = "CREATE TABLE "  + equip[i] +" ("+dataNames[dataIndex[i][0]] + " " + dataTypes[0];
+				for(int c=1; c < dataIndex[i].length; c++) {
+					sql = sql + ", " + dataNames[dataIndex[i][c]] + " " + dataTypes[0];
+				}
+				sql = sql+")";
+				System.out.println(sql);
+				stmt.executeUpdate(sql);
+			}
+
+			
+			for(EquipItem item:allEquip) {
+				
+			}
+			System.out.println("The table is updated...");
+
+			
+//			System.out.println("Created table in given database successfully...");
+			// 	insert values into the table
+//			sql = "INSERT INTO Registration " +
+//					"VALUES (…)";
+//			stmt. …; // repeat the procedure for all rows of the table
+//			System.out.println("Inserted records into the table...");
+			// 	create the java mysql update preparedstatement
+/*			String query = "update registration …"; // Update age of Sumit Mittal
+			PreparedStatement preparedStmt = conn.prepareStatement(query);
+			// execute p
+			// 		insert a new values to the table with preparedstatement
+			query = "insert into registration values(?, ?, ?, ?)";
+			// finish the statement
+			.
+			System.out.println("The table is updated...");
+			conn.close(); */
+		}	
+		catch(SQLException se){
+		//Handle errors for JDBC
+		se.printStackTrace();
+		}
+		catch(Exception e){
+		//Handle errors for Class.forName
+		e.printStackTrace();
+		}
+		finally {
+		    try { if (resultSet != null) resultSet.close(); } catch (Exception e) {};
+		    try { if (stmt != null) stmt.close(); } catch (Exception e) {};
+		    try { if (conn != null) conn.close(); } catch (Exception e) {};
+		}
+		System.out.println("Goodbye!");
+	}
+		
+}		

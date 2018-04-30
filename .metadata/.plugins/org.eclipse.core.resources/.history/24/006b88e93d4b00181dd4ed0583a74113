@@ -1,0 +1,27 @@
+import java.io.File;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+
+public class Run {
+
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+
+		try {
+			File XmlFile = new File("Assignment_EQ_reduced.xml");
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+	
+		ParseCIM(XmlFile);
+		
+		
+		
+	}
+
+}
