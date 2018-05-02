@@ -15,7 +15,7 @@ public class Run {
 	// Database constructs pass to all programs
 	private static String [][] dataNames= {{"rdf_ID", "VARCHAR (38)"},//0
 			{"NominalVoltage", "FLOAT (16,10)"}, //1
-			{"Name", "VARCHAR(20)"}, //2 *************IS THIS ENOUGH FOR NAME 
+			{"Name", "VARCHAR(30)"}, //2 *************IS THIS ENOUGH FOR NAME 
 			{"MaxOperatingP", "FLOAT (16,10)"}, //3 
 			{"MinOperatingP", "FLOAT (16,10)"}, //4
 			{"RatedS", "FLOAT (16,10)"}, //5
@@ -33,10 +33,12 @@ public class Run {
 			{"RDF_ID_GeneratingUnit", "VARCHAR (38)"},//17
 			{"RDF_ID_RegulatingControl", "VARCHAR (38)"}, //18
 			{"RDF_ID_PowerTransformer", "VARCHAR (38)"}, //19
-			{"RDF_ID_BaseVoltage", "VARCHAR (38)"}}; //20 - added to deal with CIM inconsistency
+			{"RDF_ID_BaseVoltage", "VARCHAR (38)"}, //20 - added to deal with CIM inconsistency
+			{"RDF_ID_ConnectivityContainer", "VARCHAR (38)"}, //21 - for connectivity nodes
+			{"RDF_ID_ConnectivityNode", "VARCHAR (38)"}}; //22 - for connectivity nodes
 	// Equipment types
 	private static String [] equip = {"BaseVoltage","Substation", "VoltageLevel", "GeneratingUnit", "SynchronousMachine", "RegulatingControl", 
-			"PowerTransformer", "EnergyConsumer", "PowerTransformerEnd", "Breaker", "RatioTapChanger"}; 
+			"PowerTransformer", "EnergyConsumer", "PowerTransformerEnd", "Breaker", "RatioTapChanger", "ConnectivityNode", "Terminal"}; 
 	// Hash table of date required for each type
 	private static int [][] dataIndex= {{0, 1}, 	// BaseVoltage							
 			{0,	2,	13},				// Substation					
@@ -48,19 +50,23 @@ public class Run {
 			{0,	2,	16},				// Energy Con	 - Removed 15 ALSO NO BASE VOLTAGE . No 6 and 7 because SSH	
 			{0,	2,	9,  10, 19,	20},	// Power Tx End 		
 			{0,	2,	16},				// Breaker	- Removed 11 ALSO NO BASE VOLTAGE 	
-			{0,	2}}; 				// Ratio Tap Changer - Removed 12 SSH
+			{0,	2}, 				// Ratio Tap Changer - Removed 12 SSH
+			{0,	2, 21},				// Connectivity Node 
+			{0, 2, 22}}; 			// Terminals
 	// Hash table for SSH data
 	private static int [] [] dataSSHIndex =  {{}, 	// BaseVoltage							
 			{},				// Substation					
 			{},			// VoltageLevel				
 			{},		// Gen Unit		
-			{0,6,7}, // SynchMachine. Remove 6 and 7 because they are SSH. ALSO REMOVE BASE VOLTAGE RDF (15). NOT THERE??
-			{0,8},						// Reg Control - removed 14 SSH value 	
+			{0,6,7}, // SynchMachine.
+			{0,8},						// Reg Control 
 			{},				// Power Tx		
-			{0,6,7},				// Energy Con	 - Removed 15 ALSO NO BASE VOLTAGE . No 6 and 7 because SSH	
+			{0,6,7},				// Energy Con	 	
 			{},	// Power Tx End 		
-			{0,11},				// Breaker	- Removed 11 ALSO NO BASE VOLTAGE 	
-			{0,12}}; 				// Ratio Tap Changer - Removed 12 SSH
+			{0,11},				// Breaker	
+			{0,12},				// Ratio Tap Changer
+			{},
+			{}}; 				 
 	
 	
 	
@@ -73,7 +79,6 @@ public class Run {
 		// EQ file parser uses arraylists to hold the node lists and equipment lists. each equipment item has a type and string array of data. the information held in data is determined by type. 
 		
 		
-
 		try {
 			File EQFile = new File("Assignment_EQ_reduced.xml");
 			ParseEQ parserEQ = new ParseEQ(EQFile, equip, dataNames, dataIndex);
@@ -86,10 +91,6 @@ public class Run {
 		catch(Exception e){
 			e.printStackTrace();
 		}
-	
-
-		
-		
 		
 	}
 

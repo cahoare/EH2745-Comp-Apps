@@ -13,13 +13,13 @@ public class EquipItem {
 	public String [] data; //actual data for object
 	private Node item; //passed node from db builder
 	public int type; //passed type of object. known from search. 	
-		
+	private int [][] dataIndex;	
 	
-	public EquipItem(Node item, int type, String [] equipNames) {
+	public EquipItem(Node item, int type, String [] equipNames, int [][] dataIndex) {
 
 		this.item = item; //passed node
 		this.type = type; //passed type
-
+		this.dataIndex = dataIndex; //passed hash table 
 		dataGen(equipNames);
 		
 	}
@@ -48,20 +48,10 @@ public class EquipItem {
 				"RotatingMachine.GeneratingUnit", //17
 				"RegulatingCondEq.RegulatingControl", //18
 				equipNames[type]+"."+"PowerTransformer", //19
-				"TransformerEnd.BaseVoltage"}; //20 - added to deal with CIM inconsistency
-		
-		// Hash table of date required for each type
-		int [][] dataIndex= {{0, 1}, 	// BaseVoltage							
-				{0,	2,	13},				// Substation					
-				{0,	2,	14,	15},			// VoltageLevel				
-				{0,	2,	3,	4,	16},		// Gen Unit		
-				{0,	2,	5,  17,	18,	16}, // SynchMachine. Remove 6 and 7 because they are SSH. ALSO REMOVE BASE VOLTAGE RDF (15). NOT THERE??
-				{0,	2},						// Reg Control - removed 14 SSH value 	
-				{0,	2,	16},				// Power Tx		
-				{0,	2,	16},				// Energy Con	 - Removed 15 ALSO NO BASE VOLTAGE . No 6 and 7 because SSH	
-				{0,	2,	9,  10, 19,	20},	// Power Tx End 		
-				{0,	2,	16},				// Breaker	- Removed 15 ALSO NO BASE VOLTAGE 	
-				{0,	2}}; 				// Ratio Tap Changer - Removed 12 SSH
+				"TransformerEnd.BaseVoltage",			//20 - added to deal with CIM inconsistency
+				equipNames[type]+"."+"ConnectivityNodeContainer", //21
+				equipNames[type]+"."+"ConnectivityNode"}; //22 
+	
 		
 		data = new String[dataIndex[type].length]; //init the string size based on type
 		String dataNameHold = ""; //hold term for search string. used in exception handling /debugging

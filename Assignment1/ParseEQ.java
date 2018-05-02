@@ -70,7 +70,7 @@ public class ParseEQ {
 				listEquip.add(doc.getElementsByTagName("cim:" + equip[i]));
 
 				for (int c=0; c < listEquip.get(i).getLength(); c++) { // build an item for each type within the list. item type corresponds to equip array
-					allEquip.add(new EquipItem(listEquip.get(i).item(c), i, equip)) ;
+					allEquip.add(new EquipItem(listEquip.get(i).item(c), i, equip, dataIndex)) ;
 				}
 					
 			}

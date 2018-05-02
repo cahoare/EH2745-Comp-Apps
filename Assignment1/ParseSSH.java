@@ -52,15 +52,13 @@ public class ParseSSH {
 		ParseSSH.equip = equip;
 		ParseSSH.dataNames = dataNames;
 		ParseSSH.dataIndex = dataIndex;
-		sshParse();	
-	
+		sshParse();		
 	}
 
 	private static void sshParse () {
 		
 		
 		// just need to find values for Synch machine, regulating control, energy con, Tap changer 
-		
 		
 		listEquip = new ArrayList<NodeList>(); 
 		equipDataList = new ArrayList<EquipData>();
@@ -79,8 +77,7 @@ public class ParseSSH {
 				}
 					
 			}
-		
-		
+			
 		}
 		catch(Exception e){
 			e.printStackTrace();
