@@ -1,4 +1,4 @@
-package equipment;
+
 
 import javax.xml.parsers.DocumentBuilderFactory; // Related to HTML file doc parsing
 import javax.xml.parsers.DocumentBuilder; 
@@ -10,17 +10,10 @@ import org.w3c.dom.Element;
 
 public class EquipItem {
 	
-	// hold - dtypes from project desc. 	String [] dataNames = {"rdf:ID","nominalvalue","name","region_rdf:ID","substation_rdf:ID","baseVoltage_rdf:ID","maxP","minP",
-//	"equipmentContainer_rdf:ID","ratedS","P","Q","genUnit_rdf:ID","regControl_rdf:ID","targetValue","Transformer.r","Transformer.x",
-//	"Transformer_rdf:ID","state","step"}; //data types
-
-	
-
 	public String [] data; //actual data for object
-	Node item; //passed node from db builder
+	private Node item; //passed node from db builder
 	public int type; //passed type of object. known from search. 	
-	
-	
+		
 	
 	public EquipItem(Node item, int type, String [] equipNames) {
 

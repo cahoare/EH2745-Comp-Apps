@@ -37,7 +37,6 @@ public class Run {
 	// Equipment types
 	private static String [] equip = {"BaseVoltage","Substation", "VoltageLevel", "GeneratingUnit", "SynchronousMachine", "RegulatingControl", 
 			"PowerTransformer", "EnergyConsumer", "PowerTransformerEnd", "Breaker", "RatioTapChanger"}; 
-	
 	// Hash table of date required for each type
 	private static int [][] dataIndex= {{0, 1}, 	// BaseVoltage							
 			{0,	2,	13},				// Substation					
@@ -50,7 +49,20 @@ public class Run {
 			{0,	2,	9,  10, 19,	20},	// Power Tx End 		
 			{0,	2,	16},				// Breaker	- Removed 11 ALSO NO BASE VOLTAGE 	
 			{0,	2}}; 				// Ratio Tap Changer - Removed 12 SSH
-
+	// Hash table for SSH data
+	private static int [] [] dataSSHIndex =  {{}, 	// BaseVoltage							
+			{},				// Substation					
+			{},			// VoltageLevel				
+			{},		// Gen Unit		
+			{0,6,7}, // SynchMachine. Remove 6 and 7 because they are SSH. ALSO REMOVE BASE VOLTAGE RDF (15). NOT THERE??
+			{0,8},						// Reg Control - removed 14 SSH value 	
+			{},				// Power Tx		
+			{0,6,7},				// Energy Con	 - Removed 15 ALSO NO BASE VOLTAGE . No 6 and 7 because SSH	
+			{},	// Power Tx End 		
+			{0,11},				// Breaker	- Removed 11 ALSO NO BASE VOLTAGE 	
+			{0,12}}; 				// Ratio Tap Changer - Removed 12 SSH
+	
+	
 	
 	public static void main(String[] args) {
 
@@ -64,8 +76,12 @@ public class Run {
 
 		try {
 			File EQFile = new File("Assignment_EQ_reduced.xml");
-			ParseEQ parser = new ParseEQ(EQFile, equip, dataNames, dataIndex);
-			parser.dbBuild(dbSetup);
+			ParseEQ parserEQ = new ParseEQ(EQFile, equip, dataNames, dataIndex);
+			parserEQ.dbBuild(dbSetup);
+			
+			File SSHFile = new File("Assignment_SSH_reduced.xml");
+			ParseSSH parserSSH = new ParseSSH(SSHFile, equip, dataNames, dataSSHIndex);
+			parserSSH.dbUpdate(dbSetup);
 		}
 		catch(Exception e){
 			e.printStackTrace();
