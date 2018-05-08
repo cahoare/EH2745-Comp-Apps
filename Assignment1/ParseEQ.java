@@ -83,7 +83,7 @@ public class ParseEQ {
 				
 	}
 
-	public static void dbBuild(String [] dbSetup){
+	public static boolean dbBuild(String [] dbSetup){
 
 		
 		JDBC_DRIVER = dbSetup[0];
@@ -166,22 +166,24 @@ public class ParseEQ {
 			}
 			
 			System.out.println("The table is updated...");			
-
+			return true;
+					
 		}	
 		catch(SQLException se){
 		//Handle errors for JDBC
 		se.printStackTrace();
+		return false;
 		}
 		catch(Exception e){
 		//Handle errors for Class.forName
 		e.printStackTrace();
+		return false;
 		}
 		finally {
 		    try { if (resultSet != null) resultSet.close(); } catch (Exception e) {};
 		    try { if (stmt != null) stmt.close(); } catch (Exception e) {};
 		    try { if (conn != null) conn.close(); } catch (Exception e) {};
 		}
-		System.out.println("Goodbye!");
 	}
 		
 }		

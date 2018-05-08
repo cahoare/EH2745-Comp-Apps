@@ -22,6 +22,10 @@ public class EquipData {
 		
 	}
 	
+	/**
+	 * 
+	 * @param equipNames
+	 */
 	private void dataGen(String [] equipNames) {	
 		
 		// equipment where SSH data stored

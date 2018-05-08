@@ -85,7 +85,7 @@ public class ParseSSH {
 				
 	}
 
-	public static void dbUpdate(String [] dbSetup){
+	public static boolean dbUpdate(String [] dbSetup){
 
 		
 		JDBC_DRIVER = dbSetup[0];
@@ -96,7 +96,8 @@ public class ParseSSH {
 		
 		Connection conn = null;
 		Statement stmt = null;
-		ResultSet resultSet = null;
+		ResultSet rs = null;
+		DatabaseMetaData md = null;
 		
 		try{
 			// Register JDBC driver
@@ -114,9 +115,17 @@ public class ParseSSH {
 			//	Alter tables in database
 			for(int i=0; i<sshEquip.length; i++) {
 				for(int c=1; c < dataIndex[sshEquip[i]].length; c++) {
-					sql = "ALTER TABLE "  + equip[sshEquip[i]] + " ADD " + dataNames[dataIndex[sshEquip[i]][c]][0] + " " + dataNames[dataIndex[sshEquip[i]][c]][1];
-					System.out.println(sql);
-					stmt.executeUpdate(sql);
+					
+					//Check if columns already exist
+					md  = conn.getMetaData();
+					rs = md.getColumns(null, null, equip[sshEquip[i]] ,  dataNames[dataIndex[sshEquip[i]][c]][0] );
+					
+					if (!rs.next()) { // if columns dont exist then add them
+				
+						sql = "ALTER TABLE "  + equip[sshEquip[i]] + " ADD " + dataNames[dataIndex[sshEquip[i]][c]][0] + " " + dataNames[dataIndex[sshEquip[i]][c]][1];
+						System.out.println(sql);
+						stmt.executeUpdate(sql);
+					}
 				}
 			}
 
@@ -130,23 +139,27 @@ public class ParseSSH {
 
 			}
 			
-			System.out.println("The table is updated...");			
+			System.out.println("The table is updated...");
+			return true;
 
 		}	
 		catch(SQLException se){
-		//Handle errors for JDBC
-		se.printStackTrace();
+			//Handle errors for JDBC
+			se.printStackTrace();
+			return false;
 		}
 		catch(Exception e){
-		//Handle errors for Class.forName
-		e.printStackTrace();
+			//Handle errors for Class.forName
+			e.printStackTrace();
+			return false;
 		}
 		finally {
-		    try { if (resultSet != null) resultSet.close(); } catch (Exception e) {};
+		    try { if (rs != null) rs.close(); } catch (Exception e) {};
 		    try { if (stmt != null) stmt.close(); } catch (Exception e) {};
 		    try { if (conn != null) conn.close(); } catch (Exception e) {};
+		    try { if (md != null) conn.close(); } catch (Exception e) {};
 		}
-		System.out.println("Goodbye!");
+
 	}
 		
 }		

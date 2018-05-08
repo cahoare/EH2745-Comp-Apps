@@ -6,6 +6,19 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.wb.swt.SWTResourceManager;
+import org.eclipse.swt.widgets.Text;
+import org.eclipse.swt.widgets.Label;
+import javax.swing.JOptionPane;
+import java.sql.*;
 
 public class Run {
 
@@ -68,8 +81,24 @@ public class Run {
 			{},
 			{}}; 				 
 	
+		
+	protected Shell shlUserInterface;
+
+	
+/**
+ * Test variables
+ */
+	private String defaultFile = "No File Selected";
+	private String eqFileName;
+	private String sshFileName;
+	private boolean eqImported;
+	private boolean sshImported;
+	private boolean topProcessed;
 	
 	
+	/**
+	 * @wbp.parser.entryPoint
+	 */
 	public static void main(String[] args) {
 
 
@@ -78,20 +107,212 @@ public class Run {
 		// Calls the EQfile parser which creates the elements and then creates a database
 		// EQ file parser uses arraylists to hold the node lists and equipment lists. each equipment item has a type and string array of data. the information held in data is determined by type. 
 		
-		
+	
+		try {
+			Run window = new Run();
+			window.open();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+			
+	}
+
+	public void eqImport() {
 		try {
 			File EQFile = new File("Assignment_EQ_reduced.xml");
 			ParseEQ parserEQ = new ParseEQ(EQFile, equip, dataNames, dataIndex);
-			parserEQ.dbBuild(dbSetup);
-			
-			File SSHFile = new File("Assignment_SSH_reduced.xml");
-			ParseSSH parserSSH = new ParseSSH(SSHFile, equip, dataNames, dataSSHIndex);
-			parserSSH.dbUpdate(dbSetup);
+			eqImported = parserEQ.dbBuild(dbSetup);
 		}
 		catch(Exception e){
 			e.printStackTrace();
 		}
-		
 	}
 
+	
+	public void sshImport() {
+		try{
+			File SSHFile = new File("Assignment_SSH_reduced.xml");
+			ParseSSH parserSSH = new ParseSSH(SSHFile, equip, dataNames, dataSSHIndex);
+			sshImported = parserSSH.dbUpdate(dbSetup);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+	}
+
+	
+	/**
+	 * Open the window.
+	 */
+	public void open() {
+		Display display = Display.getDefault();
+		createContents();
+		shlUserInterface.open();
+		shlUserInterface.layout();
+		while (!shlUserInterface.isDisposed()) {
+			if (!display.readAndDispatch()) {
+				display.sleep();
+			}
+		}
+	}
+
+	
+	protected void createContents() {
+		shlUserInterface = new Shell();
+		shlUserInterface.setSize(450, 300);
+		shlUserInterface.setText("User Interface");
+		
+		Button eqfiledialog = new Button(shlUserInterface, SWT.NONE);
+		eqfiledialog.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
+		
+
+		eqfiledialog.setBounds(16, 53, 123, 37);
+		eqfiledialog.setText("Choose EQ File");
+		
+		Label eqfilelabel = new Label(shlUserInterface, SWT.BORDER | SWT.WRAP);
+		eqfilelabel.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
+		eqfilelabel.setBackground(SWTResourceManager.getColor(SWT.COLOR_LIST_BACKGROUND));
+		eqfilelabel.setBounds(145, 55, 139, 35);
+		eqfilelabel.setText(defaultFile);
+		
+		Button eqimport = new Button(shlUserInterface, SWT.NONE);
+		eqimport.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
+		eqimport.setBounds(290, 53, 123, 37);
+		eqimport.setText("Import EQ");
+		eqimport.setEnabled(false);
+		
+		Button sshfiledialog = new Button(shlUserInterface, SWT.NONE);
+		sshfiledialog.setText("Choose SSH File");
+		sshfiledialog.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
+		sshfiledialog.setEnabled(false);
+		sshfiledialog.setBounds(16, 96, 123, 37);
+		
+		Label sshfilelabel = new Label(shlUserInterface, SWT.BORDER | SWT.WRAP);
+		sshfilelabel.setText("No File Selected");
+		sshfilelabel.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
+		sshfilelabel.setBackground(SWTResourceManager.getColor(SWT.COLOR_LIST_BACKGROUND));
+		sshfilelabel.setBounds(145, 98, 139, 35);
+		
+		Button sshimport = new Button(shlUserInterface, SWT.NONE);
+		sshimport.setText("Import SSH");
+		sshimport.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
+		sshimport.setEnabled(false);
+		sshimport.setBounds(290, 96, 123, 37);
+		
+		Label header = new Label(shlUserInterface, SWT.NONE);
+		header.setFont(SWTResourceManager.getFont("Calibri", 12, SWT.BOLD));
+		header.setBounds(128, 17, 155, 25);
+		header.setText("EQ2745 - Assignment 1");
+
+		eqfiledialog.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				
+				FileDialog dialog = new FileDialog(shlUserInterface, SWT.OPEN);
+				dialog.setFilterExtensions(new String [] {"*.xml"});
+				dialog.setFilterPath("c:\\");
+				eqFileName = dialog.open();
+				if (eqFileName == null) {
+					if(!eqImported) {
+						eqfilelabel.setText(defaultFile);
+					}
+				}
+				else if(!eqFileName.contains("EQ")){
+				    JOptionPane.showMessageDialog(null, "EQ file name must contain EQ");
+				    eqFileName = null;
+					if(!eqImported) {
+						eqfilelabel.setText(defaultFile);
+					}
+				}
+				else {
+					String [] dispName = eqFileName.split("\\\\");
+					eqfilelabel.setText(dispName[dispName.length-1]);
+					System.out.println(dispName[dispName.length-1]);
+					eqimport.setEnabled(true);
+
+				}
+
+			}
+			
+		});
+		
+		sshfiledialog.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				
+				FileDialog dialog = new FileDialog(shlUserInterface, SWT.OPEN);
+				dialog.setFilterExtensions(new String [] {"*.xml"});
+				dialog.setFilterPath("c:\\");
+				sshFileName = dialog.open();
+				if (sshFileName == null) {
+					if(!sshImported) {
+						sshfilelabel.setText(defaultFile);
+					}
+				}
+				else if(!sshFileName.contains("SSH")){
+				    JOptionPane.showMessageDialog(null, "SSH file name must contain SSH");
+				    sshFileName = null;
+					sshfilelabel.setText(defaultFile);
+				}
+				else {
+					String [] dispName = sshFileName.split("\\\\");
+					sshfilelabel.setText(dispName[dispName.length-1]);
+					System.out.println(dispName[dispName.length-1]);
+					sshimport.setEnabled(true);
+
+				}
+
+			}
+			
+		});
+		
+		eqimport.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				eqImport();
+				if (!eqImported) {
+				    JOptionPane.showMessageDialog(null, "Import failed - Please retry");
+				    eqFileName = null;
+					eqfilelabel.setText(defaultFile);
+				}
+				else {
+					eqfilelabel.setText("Successful Import");
+					sshfiledialog.setEnabled(true);
+					eqimport.setEnabled(false);
+				}
+			}
+		});
+		
+		sshimport.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				
+				if(eqImported) {
+					sshImport();
+					if (!sshImported) {
+				    	JOptionPane.showMessageDialog(null, "Import failed - Please retry");
+				    	sshFileName = null;
+				    	sshfilelabel.setText(defaultFile);
+					}
+					else {
+						sshfilelabel.setText("Successful Import");
+						sshimport.setEnabled(false);
+					}
+				}
+				else {
+					JOptionPane.showMessageDialog(null, "Cannot confirm database - please reload EQ");
+					eqfilelabel.setText(defaultFile);
+					sshfilelabel.setText(defaultFile);
+					sshimport.setEnabled(false);
+					eqimport.setEnabled(false);
+					eqFileName = null;
+					sshFileName = null;
+				}
+			}
+		});
+		
+		
+	}
 }
+
+	
