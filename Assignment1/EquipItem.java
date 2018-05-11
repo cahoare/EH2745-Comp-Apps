@@ -29,28 +29,34 @@ public class EquipItem {
 		
 		// data types
 		String [] dataNames= {"rdf:ID", //0
-				equipNames[type]+"."+"nominalVoltage", //1
-				"IdentifiedObject.name", //2
-				equipNames[type]+"."+"maxOperatingP", //3 
-				equipNames[type]+"."+"minOperatingP", //4
-				"RotatingMachine.ratedS", //5
-				"P", //6 - SSH values
-				"Q", //7 - SSH Values
-				"targetValue", //8 - SSH values
-				equipNames[type]+"."+"r", //9
-				equipNames[type]+"."+"x", //10
-				"state", //11 - SSH values
-				"step", //12 - SSH values
-				equipNames[type]+"."+"Region", //13
-				equipNames[type]+"."+"Substation", //14
-				equipNames[type]+"."+"BaseVoltage", //15
-				"Equipment.EquipmentContainer", //16
-				"RotatingMachine.GeneratingUnit", //17
-				"RegulatingCondEq.RegulatingControl", //18
-				equipNames[type]+"."+"PowerTransformer", //19
-				"TransformerEnd.BaseVoltage",			//20 - added to deal with CIM inconsistency
-				equipNames[type]+"."+"ConnectivityNodeContainer", //21
-				equipNames[type]+"."+"ConnectivityNode"}; //22 
+				equipNames[type]+"."+"nominalVoltage",	//1
+				"IdentifiedObject.name", 				//2
+				equipNames[type]+"."+"maxOperatingP", 	//3 
+				equipNames[type]+"."+"minOperatingP", 	//4
+				"RotatingMachine.ratedS", 				//5
+				"P", 									//6 - SSH values
+				"Q", 									//7 - SSH Values
+				"targetValue", 							//8 - SSH values
+				equipNames[type]+"."+"r", 				//9
+				equipNames[type]+"."+"x", 				//10
+				equipNames[type]+"."+"bch", 			//11
+				"state", 								//12 - SSH values
+				"step", 								//13 - SSH values
+				"enabled",								//14
+				equipNames[type]+"."+"Region", 			//15
+				equipNames[type]+"."+"Substation", 		//16
+				equipNames[type]+"."+"BaseVoltage", 	//17
+				"Equipment.EquipmentContainer", 		//18
+				"RotatingMachine.GeneratingUnit",		//19
+				"RegulatingCondEq.RegulatingControl", 	//20
+				equipNames[type]+"."+"PowerTransformer", //21
+				"TransformerEnd.BaseVoltage",			//22 - added to deal with CIM inconsistency
+				equipNames[type]+"."+"ConnectivityNodeContainer", //23
+				equipNames[type]+"."+"ConnectivityNode", //24 
+				equipNames[type]+"."+"ConductingEquipment",		//25
+				"Equipment.EquipmentContainer"}; //26
+				
+				 
 	
 		
 		data = new String[dataIndex[type].length]; //init the string size based on type

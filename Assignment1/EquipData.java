@@ -31,7 +31,7 @@ public class EquipData {
 		// equipment where SSH data stored
 		//private static int [] sshEquip = {4,5,7,9,10};
 		
-		String [] dataNameHold = {"cim:RotatingMachine.p","cim:RotatingMachine.q","cim:RegulatingControl.targetValue", "cim:EnergyConsumer.p", "cim:EnergyConsumer.q", "cim:Switch.open", "cim:TapChanger.step"};  //hold term for search string. used in exception handling /debugging
+		String [] dataNameHold = {"cim:RotatingMachine.p","cim:RotatingMachine.q","cim:RegulatingControl.targetValue", "cim:EnergyConsumer.p", "cim:EnergyConsumer.q", "cim:Switch.open", "cim:TapChanger.step", "cim:RegulatingControl.enabled"};  //hold term for search string. used in exception handling /debugging
 		
 	
 		try {
@@ -46,9 +46,16 @@ public class EquipData {
 				data[2] = element.getElementsByTagName(dataNameHold[1]).item(0).getFirstChild().getNodeValue();
 				break;
 			case 5: //Reg control
-				data = new String[2];
+				data = new String[3];
 				data[0] = element.getAttribute("rdf:about"); // all items have rdf:ID 
 				data[1] = element.getElementsByTagName(dataNameHold[2]).item(0).getFirstChild().getNodeValue();
+				if(element.getElementsByTagName(dataNameHold[7]).item(0).getFirstChild().getNodeValue().equals("true")) {
+					data[2] = "1"; //Switched breaker status around. 1 is closed, 0 is open. Saved as bool in db
+				}
+				else {
+					data[2] = "0"; 
+					System.out.println(element.getElementsByTagName(dataNameHold[7]).item(0).getFirstChild().getNodeValue() );
+				}
 				break;
 			case 7: //Energy con
 				data = new String[3];
@@ -59,7 +66,7 @@ public class EquipData {
 			case 9: //Breaker
 				data = new String[2];
 				data[0] = element.getAttribute("rdf:about"); // all items have rdf:ID 
-				if(element.getElementsByTagName(dataNameHold[5]).item(0).getFirstChild().getNodeValue() == "true") {
+				if(element.getElementsByTagName(dataNameHold[5]).item(0).getFirstChild().getNodeValue().equals("true")) {
 					data[1] = "0"; //Switched breaker status around. 1 is closed, 0 is open. Saved as bool in db
 				}
 				else {
