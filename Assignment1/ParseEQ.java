@@ -7,7 +7,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Node;
 import org.w3c.dom.Element;
-import equipment.*;
+
 
 import java.sql.*;
 
@@ -165,6 +165,20 @@ public class ParseEQ {
 				stmt.executeUpdate(sql);
 			}
 			
+			// Create RDF_ID table - could add to previous equipment item iteration step!!!!!
+			
+			sql = "CREATE TABLE "  + "RDF_ID" +" ("+dataNames[dataIndex[0][0]][0] + " " + dataNames[dataIndex[0][0]][1] + ", EquipmentType VARCHAR (38))";
+			System.out.println(sql);
+			stmt.executeUpdate(sql);
+			
+			for(EquipItem item:allEquip) {
+				sql = "INSERT INTO RDF_ID (" + dataNames[dataIndex[0][0]][0] + ", EquipmentType)"+ " VALUES ('#" + item.data[0] +"'";
+				sql = sql + ", '" + equip[item.type]+ "')";
+
+				System.out.println(sql);
+				stmt.executeUpdate(sql);
+				
+			}
 			System.out.println("The table is updated...");			
 			return true;
 					

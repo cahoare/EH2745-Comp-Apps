@@ -52,7 +52,7 @@ public class Run {
 			{"RDF_ID_BaseVoltage", "VARCHAR (38)"}, //22 - added to deal with CIM inconsistency
 			{"RDF_ID_ConnectivityContainer", "VARCHAR (38)"}, //23 - for connectivity nodes
 			{"RDF_ID_ConnectivityNode", "VARCHAR (38)"}, //24 - for connectivity nodes
-			{"RDF_ID_ConductingEquipmentReource", "VARCHAR (38)"}, //25 - for conducting equipment resource
+			{"RDF_ID_ConductingEquipmentResource", "VARCHAR (38)"}, //25 - for conducting equipment resource
 			{"RDF_ID_EquipmentContainer", "VARCHAR (38)"}}; //26 - EquipmentContainer-Find Voltage Level in a busbar
 
 	
@@ -155,13 +155,26 @@ public class Run {
 		}
 		System.out.println()
 */
-		try {
+
+		File EQFile = new File("Assignment_EQ_reduced.xml");
+		ParseEQ parserEQ = new ParseEQ(EQFile, equip, dataNames, dataIndex);
+		Boolean eqImported = parserEQ.dbBuild(dbSetup);
+		
+		File SSHFile = new File("Assignment_SSH_reduced.xml");
+		ParseSSH parserSSH = new ParseSSH(SSHFile, equip, dataNames, dataSSHIndex);
+		Boolean sshImported = parserSSH.dbUpdate(dbSetup);
+		
+		Topology topProcessor = new Topology();
+		topProcessor.dbBuildtopology(dbSetup, equip, dataNames);
+		
+		
+		/*		try {
 			Run window = new Run();
 			window.open();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-			
+	*/		
 	}
 
 	public void eqImport() {
@@ -181,6 +194,18 @@ public class Run {
 			File SSHFile = new File("Assignment_SSH_reduced.xml");
 			ParseSSH parserSSH = new ParseSSH(SSHFile, equip, dataNames, dataSSHIndex);
 			sshImported = parserSSH.dbUpdate(dbSetup);
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+	}
+
+	
+	public void topProcess() {
+		try{
+			Topology topProcessor = new Topology();
+			topProcessor.dbBuildtopology(dbSetup, equip, dataNames);
+			
 		}
 		catch(Exception e){
 			e.printStackTrace();
@@ -255,11 +280,12 @@ public class Run {
 		topprocess.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
+				topProcess();
 			}
 		});
 		topprocess.setText("Process Topology");
 		topprocess.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
-		topprocess.setEnabled(false);
+		topprocess.setEnabled(true);
 		topprocess.setBounds(16, 139, 123, 37);
 		
 		Label lblNoEquipmentData = new Label(shlUserInterface, SWT.BORDER | SWT.WRAP);
