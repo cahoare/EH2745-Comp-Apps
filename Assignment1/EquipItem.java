@@ -43,18 +43,20 @@ public class EquipItem {
 				"state", 								//12 - SSH values
 				"step", 								//13 - SSH values
 				"enabled",								//14
-				equipNames[type]+"."+"Region", 			//15
-				equipNames[type]+"."+"Substation", 		//16
-				equipNames[type]+"."+"BaseVoltage", 	//17
-				"Equipment.EquipmentContainer", 		//18
-				"RotatingMachine.GeneratingUnit",		//19
-				"RegulatingCondEq.RegulatingControl", 	//20
-				equipNames[type]+"."+"PowerTransformer", //21
-				"TransformerEnd.BaseVoltage",			//22 - added to deal with CIM inconsistency
-				equipNames[type]+"."+"ConnectivityNodeContainer", //23
-				equipNames[type]+"."+"ConnectivityNode", //24 
-				equipNames[type]+"."+"ConductingEquipment",		//25
-				"Equipment.EquipmentContainer"}; //26
+				"referencePriorit",						//15
+				"SynchronousMachine.qPercent",			//16
+				equipNames[type]+"."+"Region", 			//17
+				equipNames[type]+"."+"Substation", 		//18
+				equipNames[type]+"."+"BaseVoltage", 	//19
+				"Equipment.EquipmentContainer", 		//20
+				"RotatingMachine.GeneratingUnit",		//21
+				"RegulatingCondEq.RegulatingControl", 	//22
+				equipNames[type]+"."+"PowerTransformer", //23
+				"TransformerEnd.BaseVoltage",			//24 - added to deal with CIM inconsistency
+				equipNames[type]+"."+"ConnectivityNodeContainer", //25
+				equipNames[type]+"."+"ConnectivityNode", //26 
+				equipNames[type]+"."+"ConductingEquipment",		//27
+				"Equipment.EquipmentContainer"}; //28
 				
 				 
 	
@@ -73,7 +75,7 @@ public class EquipItem {
 				
 				dataNameHold = "cim:"+dataNames[dataIndex[type][i]]; //set up search term
 			
-				if (dataIndex[type][i]<13){ // if it is not an rdf resource attribute - find the element text
+				if (dataIndex[type][i]<17){ // if it is not an rdf resource attribute - find the element text
 					data[i] = element.getElementsByTagName(dataNameHold).item(0).getFirstChild().getNodeValue(); //the text gets stored as a node as well in DOM. Need to getElements by tag name
 				}
 				else { //if it is an rdf attribute. find the attribute data

@@ -7,8 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-
-import org.w3c.dom.NodeList;
+import java.util.Arrays;
 
 public class Topology {
 	// For working with complex
@@ -26,42 +25,90 @@ public class Topology {
 	static String PASS;
 
 	// BUSBAR INFO
-	private static ArrayList<String> busbar_name = new ArrayList<String>();
-	private static ArrayList<String> busbar_rdfID = new ArrayList<String>();
-	private static ArrayList<String> busbar_equipmentCont = new ArrayList<String>();
+	private ArrayList<String> busbar_name;
+	private ArrayList<String> busbar_rdfID;
+	private ArrayList<String> busbar_equipmentCont;
 	// VOLTAGE LEVELS
-	private static ArrayList<String> voltagelevel_rdfID = new ArrayList<String>(); // identification
-	private static ArrayList<String> voltagelevel_value = new ArrayList<String>(); // value
+	private ArrayList<String> voltagelevel_rdfID; // identification
+	private ArrayList<String> voltagelevel_value; // value
 	// TERMINALS AND CONNECT. NODES INFO
-	private static ArrayList<String> rdfID_resource = new ArrayList<String>();
-	private static ArrayList<String> common_connectnode = new ArrayList<String>();
+	private ArrayList<String> rdfID_resource;
+	private ArrayList<String> common_connectnode;
 	// BREAKERS
-	private static ArrayList<String> rdfID_breaker = new ArrayList<String>();
-	private static ArrayList<String> state_breaker = new ArrayList<String>();
+	private ArrayList<String> rdfID_breaker;
+	private ArrayList<String> state_breaker;
 	// LINES
-	private static ArrayList<String> rdfID_line = new ArrayList<String>();
-	private static ArrayList<String> R_line = new ArrayList<String>();
-	private static ArrayList<String> X_line = new ArrayList<String>();
-	private static ArrayList<String> bsh_line = new ArrayList<String>();
+	private ArrayList<String> rdfID_line;
+	private ArrayList<String> R_line;
+	private ArrayList<String> X_line;
+	private ArrayList<String> bsh_line;
 	// TRANSFORMER
-	private static ArrayList<String> rdfID_transformer = new ArrayList<String>();
-	private static ArrayList<String> R_transformer = new ArrayList<String>();
-	private static ArrayList<String> X_transformer = new ArrayList<String>();
-
+	private ArrayList<String> rdfID_transformer;
+	private ArrayList<String> R_transformer;
+	private ArrayList<String> X_transformer;
+	// GENERATORS
+	private ArrayList<String> rdfID_gen;
+	private ArrayList<String> rdfID_syn;
+	private ArrayList<String> rdfID_syn_genref;
+	private ArrayList<String> p_gen;
+	private ArrayList<String> q_gen;
+	private ArrayList<String> p_max_gen;
+	private ArrayList<String> p_min_gen;
+	private ArrayList<String> q_perc_gen; // assumes 50% to save adding
+	private ArrayList<String> ratedS_gen;
+	private ArrayList<String> referenceP_gen; 
+	// LOADS
+	private ArrayList<String> rdfID_load;
+	private ArrayList<String> p_load;
+	private ArrayList<String> q_load;
+	
+	
 	// FOR TOPOLOGY BUILD
-	private static ArrayList<String[]> futurePaths = new ArrayList<String[]>();
-	private static ArrayList<ArrayList<String>> pastPaths = new ArrayList<ArrayList<String>>();
-	private static ArrayList<String> equipType = new ArrayList<String>();
-	private static int futurePathsIndex;
+	private ArrayList<String[]> futurePaths = new ArrayList<String[]>();
+	private ArrayList<ArrayList<String>> pastPaths = new ArrayList<ArrayList<String>>();
+	private ArrayList<String> equipType = new ArrayList<String>();
+	private int futurePathsIndex;
+	private ArrayList<String[]> busEquipment = new ArrayList<String[]>(); // Records the equipment connected to each bus when a bus is discovered. [0] is bus num, [1] is equip rdf id and [2] is equiptype 
 
 	// PASSED VARIABLES
 	private static String[] equip;
 	private static String[][] dataNames;
 
-	public static void dbBuildtopology(String[] dbSetup, String[] equip, String[][] dataNames) {
-
+	public Topology(String[] equip, String[][] dataNames) {
 		Topology.equip = equip;
 		Topology.dataNames = dataNames;
+		busbar_name = new ArrayList<String>();
+		busbar_rdfID = new ArrayList<String>();
+		busbar_equipmentCont = new ArrayList<String>();
+		voltagelevel_rdfID = new ArrayList<String>(); // identification
+		voltagelevel_value = new ArrayList<String>(); // value
+		rdfID_resource = new ArrayList<String>();
+		common_connectnode = new ArrayList<String>();
+		rdfID_breaker = new ArrayList<String>();
+		state_breaker = new ArrayList<String>();
+		rdfID_line = new ArrayList<String>();
+		R_line = new ArrayList<String>();
+		X_line = new ArrayList<String>();
+		bsh_line = new ArrayList<String>();
+		rdfID_transformer = new ArrayList<String>();
+		R_transformer = new ArrayList<String>();
+		X_transformer = new ArrayList<String>();
+		rdfID_gen = new ArrayList<String>();
+		rdfID_syn = new ArrayList<String>();
+		rdfID_syn_genref = new ArrayList<String>();
+		p_gen = new ArrayList<String>();
+		q_gen = new ArrayList<String>();
+		p_max_gen = new ArrayList<String>();
+		p_min_gen = new ArrayList<String>();
+		q_perc_gen = new ArrayList<String>(); // assumes 50% to save adding
+		ratedS_gen = new ArrayList<String>();
+		referenceP_gen = new ArrayList<String>(); 
+		rdfID_load = new ArrayList<String>();
+		p_load = new ArrayList<String>();
+		q_load = new ArrayList<String>();
+	}
+	
+	public void dbBuildtopology(String[] dbSetup) {
 
 		Connection conn = null;
 		Statement stmt = null;
@@ -87,20 +134,29 @@ public class Topology {
 			ResultSet rs;
 
 			// Data needed
-			int[][] dataReq = { {}, {}, { 0, 2 }, // VoltageLevel - rdf_ID, name
-					{}, {}, {}, {}, {}, // EnergyConsumer - None
+			int[][] dataReq = { {}, 
+					{}, 
+					{ 0, 2 }, // VoltageLevel - rdf_ID, name
+					{0,3,4}, // Gen unit
+					{0,21,5,6,7, 15, 16}, // Synch Machine
+					{},
+					{}, 
+					{0,6,7}, // EnergyConsumer - None
 					{ 0, 9, 10 }, // PowerTransformerEnd
 					{ 0, 12 }, // Breaker - rdf_ID, state
-					{}, {}, { 24, 25 }, // Terminal - ConnectivityNode and ConductingEquipment
-					{ 0, 2, 26 }, // Busbarsection - Name, RDFId
+					{}, 
+					{}, 
+					{ 26, 27 }, // Terminal - ConnectivityNode and ConductingEquipment
+					{ 0, 2, 28 }, // Busbarsection - Name, RDFId
 					{ 0, 9, 10, 11 }, // ACLineSegment
 					{} }; // LinearShuntCompensator - None
 
-			int[] equipReq = { 2, 8, 9, 12, 13, 14 };
+			int[] equipReq = { 2, 8, 9, 12, 13, 14, 3, 4, 7 };
 
 			for (int i = 0; i < equipReq.length; i++) {
 				sql = "Select * From " + equip[equipReq[i]];
 				rs = stmt.executeQuery(sql);
+				System.out.println(sql);
 
 				switch (equipReq[i]) {
 				case 13:
@@ -136,17 +192,44 @@ public class Topology {
 						bsh_line.add(rs.getString(dataNames[dataReq[equipReq[i]][3]][0]));
 					}
 					break;
-				case 7:
+				case 8:
 					while (rs.next()) {
 						rdfID_transformer.add(rs.getString(dataNames[dataReq[equipReq[i]][0]][0]));
 						R_transformer.add(rs.getString(dataNames[dataReq[equipReq[i]][1]][0]));
 						X_transformer.add(rs.getString(dataNames[dataReq[equipReq[i]][2]][0]));
 					}
 					break;
-
+				case 3:
+					while (rs.next()) {
+						rdfID_gen.add(rs.getString(dataNames[dataReq[equipReq[i]][0]][0]));
+						p_max_gen.add(rs.getString(dataNames[dataReq[equipReq[i]][1]][0]));
+						p_min_gen.add(rs.getString(dataNames[dataReq[equipReq[i]][2]][0]));
+					}
+					break;
+				case 4:
+					while (rs.next()) {
+						rdfID_syn.add(rs.getString(dataNames[dataReq[equipReq[i]][0]][0]));
+						rdfID_syn_genref.add(rs.getString(dataNames[dataReq[equipReq[i]][1]][0]));
+						p_gen.add(rs.getString(dataNames[dataReq[equipReq[i]][3]][0]));
+						q_gen.add(rs.getString(dataNames[dataReq[equipReq[i]][4]][0]));
+						ratedS_gen.add(rs.getString(dataNames[dataReq[equipReq[i]][2]][0])); 
+						q_perc_gen.add(rs.getString(dataNames[dataReq[equipReq[i]][6]][0]));
+						referenceP_gen.add(rs.getString(dataNames[dataReq[equipReq[i]][5]][0]));
+					}
+					break;
+				case 7:
+					while (rs.next()) {
+						rdfID_load.add(rs.getString(dataNames[dataReq[equipReq[i]][0]][0]));
+						p_load.add(rs.getString(dataNames[dataReq[equipReq[i]][1]][0]));
+						q_load.add(rs.getString(dataNames[dataReq[equipReq[i]][2]][0]));
+					}
+					break;
 				}
 			}
+			
 
+			
+			
 			// We create the busbar matrix here.
 			int nbus = busbar_rdfID.size();
 			Double[][] Ymatrix_re = new Double[nbus][nbus];
@@ -171,7 +254,7 @@ public class Topology {
 			// Initialisation step - add the equipment type to the conducting equipment in
 			// terminal table (could be done in sql...)
 
-			// equipType =new ArrayList<String>(); // ...doesnt need ot be arraylist could
+			// equipType =new ArrayList<String>(); // ...doesnt need to be arraylist could
 			// be string array. Initialised in class
 
 			for (int i = 0; i < rdfID_resource.size(); i++) {
@@ -198,10 +281,16 @@ public class Topology {
 			for (int i = 0; i < common_connectnode.size(); i++) {
 				if (common_connectnode.get(i).equals(connectNode)) {
 					// Check that its a valid future path
-					if (!rdfID_resource.get(i).equals(initialBus) && !equipType.get(i).equals("BusbarSection")
-							&& !equipType.get(i).equals("EnergyConsumer")
-							&& !equipType.get(i).equals("LinearShuntCompensator")
-							&& !equipType.get(i).equals("SynchronousMachine")) {
+					if (equipType.get(i).equals("EnergyConsumer")
+							||equipType.get(i).equals("LinearShuntCompensator")
+							||equipType.get(i).equals("SynchronousMachine")){
+						String [] busEquipmentInner = new String [3];
+						busEquipmentInner[0] = initialBus;
+						busEquipmentInner[1] = rdfID_resource.get(i);
+						busEquipmentInner[2] = equipType.get(i);
+						busEquipment.add(busEquipmentInner);
+					}
+					else if (!rdfID_resource.get(i).equals(initialBus) && !equipType.get(i).equals("BusbarSection")) {
 						futurePathsInner[1] = rdfID_resource.get(i);
 						futurePathsInner[2] = common_connectnode.get(i);
 						futurePaths.add(futurePathsInner);
@@ -221,6 +310,11 @@ public class Topology {
 				futurePathsIndex++;
 			}
 
+			
+			for (int i = 0; i < busEquipment.size();i++) {
+				System.out.println(Arrays.toString(busEquipment.get(i)));
+			}
+			
 		} catch (SQLException se) {
 			// Handle errors for JDBC
 			se.printStackTrace();
@@ -230,7 +324,7 @@ public class Topology {
 		}
 	}
 
-	public static ArrayList<String> explorePath(String[] startingPoint) {
+	public ArrayList<String> explorePath(String[] startingPoint) {
 
 		ArrayList<String> currentPath = new ArrayList<String>();
 		currentPath.add(startingPoint[0]);
@@ -253,7 +347,7 @@ public class Topology {
 				}
 				termTableRow++;
 			}
-			termTableRow--; // the row in which it is the nconnectivity node. this will help us find the new
+			termTableRow--; // the row in which it is the connectivity node. this will help us find the new
 							// elements
 			conNodeHold = common_connectnode.get(termTableRow);
 
@@ -310,26 +404,33 @@ public class Topology {
 						previouslyFound = true;
 					}
 				}
-
+					
 				// now look for further paths from this if it hasn't been found
 				if (!previouslyFound) {
-					for (int i = 0; i < common_connectnode.size(); i++) {
-						if (common_connectnode.get(i).equals(conNodeHold)
-								&& !rdfID_resource.get(i).equals(currentPath.get(currentPath.size() - 1))
-								&& !equipType.get(i).equals("BusbarSection")
-								&& !equipType.get(i).equals("EnergyConsumer")
-								&& !equipType.get(i).equals("LinearShuntCompensator")
-								&& !equipType.get(i).equals("SynchronousMachine")) {
-							String[] futurePathsInner = new String[3];
-							futurePathsInner[0] = busRDFid;
-							futurePathsInner[1] = rdfID_resource.get(i);
-							futurePathsInner[2] = common_connectnode.get(i);
-							futurePaths.add(futurePathsInner);
+					for (int i = 0; i < common_connectnode.size(); i++) { // add the equipment from the bus to the equipment register for bus categorisation 
+						if (common_connectnode.get(i).equals(conNodeHold)){
+							if(equipType.get(i).equals("EnergyConsumer")
+									||equipType.get(i).equals("LinearShuntCompensator")
+									||equipType.get(i).equals("SynchronousMachine")){
+								String [] busEquipmentInner = new String [3];
+								busEquipmentInner[0] = busRDFid;
+								busEquipmentInner[1] = rdfID_resource.get(i);
+								busEquipmentInner[2] = equipType.get(i);
+								busEquipment.add(busEquipmentInner);
+							}
+							else if (!equipType.get(i).equals("BusbarSection")
+									&& !rdfID_resource.get(i).equals(currentPath.get(currentPath.size() - 1))){
+								String[] futurePathsInner = new String[3];
+								futurePathsInner[0] = busRDFid;
+								futurePathsInner[1] = rdfID_resource.get(i);
+								futurePathsInner[2] = common_connectnode.get(i);
+								futurePaths.add(futurePathsInner);
 
+							}
 						}
+							
 					}
-				}
-
+				}			
 				currentPath.add(busRDFid);
 			}
 		}
@@ -344,7 +445,174 @@ public class Topology {
 
 	}
 
-	public static void YmatrixCalculation(ArrayList<ArrayList<String>> Branchesy, ArrayList<String> rdfIDbreaker,
+	
+	public String [][] genBuild(){		
+			// generator data
+			// 0	1	2	3		4		5	6		7		8		9		10	11	12		13		14		15		16			17		18		19		20
+			// bus	Pg	Qg	Qmax	Qmin	Vg	mBase	status	Pmax	Pmin	Pc1	Pc2	Qc1min	Qc1max	Qc2min	Qc2max	ramp_agc	ramp_10	ramp_30	ramp_q	apf
+			// x	x	x	x		x		1	x		1		x		x		0	0	0		0		0		0		0			0		0		0		0
+			
+			String [] [] genData = new String [rdfID_syn.size()][21]; // Assumes all buses are connected, main data	
+		
+			
+			// This would be a lot better in sql
+			for (int c = 0; c < rdfID_syn.size(); c++) {
+				
+				// Bus numbers are determined by position in array. NOT BUS NUMBER!
+				// Find where the generator is connected - find the bus rdfID and then find the index
+				int i = 0;
+				while(!busEquipment.get(i)[1].equals(rdfID_syn.get(c))) i++;
+				int busNum = 0;
+				while(!busbar_rdfID.get(busNum).equals(busEquipment.get(i)[0])) busNum++;
+				genData[c][0] = Integer.toString(busNum+1);
+			
+				
+				// find the generating unit which corresponds to that synch machine
+				int genIndex =0;
+				while (!rdfID_gen.get(genIndex).equals(rdfID_syn_genref.get(c))) genIndex++;
+				
+				// Pg
+				genData[c][1] = p_gen.get(c);
+				// Qg
+				genData[c][2] = q_gen.get(c);
+				// Vg
+				genData[c][5] = "1.0";
+				// mBase
+				genData[c][6] = ratedS_gen.get(c);
+				// Status
+				genData[c][7] = "1.0";
+				// Pmax
+				genData[c][8] = p_max_gen.get(genIndex);
+				// Pmin
+				genData[c][9] = p_min_gen.get(genIndex);				
+				// Qmax
+				double q_perc = Double.parseDouble(q_perc_gen.get(c));
+				double p_maxHold =  Double.parseDouble(genData[c][8]);
+				double qMax = p_maxHold *q_perc/100;
+				genData[c][3] = Double.toString(qMax);
+				// Qmin
+				genData[c][4] = "-"+genData[c][3];
+				
+				for (int j =10; j<genData[c].length;j++) {
+					genData[c][j]="0";
+				}
+			}			
+			return genData;
+	}
+	
+	public String [][] busBuild() {	
+		// 	bus data
+		//	0		1		2	3	4	5	6		7	8	9		10		11		12
+		//	bus_i	type	Pd	Qd	Gs	Bs	area	Vm	Va	baseKV	zone	Vmax	Vmin
+		// 	x		x		x	x	0	0	1		1	0	x		1		1.1		0.9
+		
+		String [] [] busData = new String [busbar_rdfID.size()][13]; // Assumes all buses are connected, main data 
+
+		// Find the reference bus - (COULD BE ERROR HERE WITH SLACK BUS BEING DISCONNECTED....)
+		// Find the generator with the highest reference priority
+		String slackGen = rdfID_syn.get(0);
+		int referenceP = Integer.parseInt(referenceP_gen.get(0));
+		if (rdfID_syn.size()>1) {
+			for (int i =1; i<rdfID_syn.size(); i++) {
+				int currRefP = Integer.parseInt(referenceP_gen.get(i));
+				if (currRefP<referenceP) {
+					referenceP = currRefP;
+					slackGen = rdfID_syn.get(i);
+				}
+			}
+		}
+		// Find the bus connected to that generator
+		// slack bus rdfID
+		int slackBusInd = 0;
+		while(!busEquipment.get(slackBusInd)[1].equals(slackGen)) slackBusInd++;
+		String slackBus = busEquipment.get(slackBusInd)[0];
+		
+		for (int i = 0 ; i < busbar_rdfID.size(); i++) {
+			
+			//bus_i
+			busData[i][0] = Integer.toString(i+1);
+			
+			// IGNORED**** - if the transformer has a tap changer then the down stream bus would need to be a PU bus - THIS IS AN ERROR -shunt comp should be static and tap changers variable
+			
+			//type
+			if (busbar_rdfID.get(i).equals(slackBus)){
+				busData[i][1]="3";
+			}
+			else { // check if there is a linear shunt compensator connected. If so make it a PU bus. Otherwise PQ
+				boolean shuntConn = false;
+				for (int x = 0; x < busEquipment.size(); x++) {
+					if(busEquipment.get(x)[0].equals(busbar_rdfID.get(i))&&busEquipment.get(x)[2].equals(equip[15])) {
+						shuntConn = true;
+					}
+				}
+				if(shuntConn) {
+					busData[i][1]="2";
+				}
+				else {
+					busData[i][1]="1";
+				}
+			}
+			
+			// connected loads
+			double p_conn =0.0000;
+			double q_conn =0.0000;
+			for(int x =0; x < busEquipment.size(); x++) {
+				if(busEquipment.get(x)[0].equals(busbar_rdfID.get(i))&&busEquipment.get(x)[2].equals(equip[7])) {
+					// find the index for the load in the load array
+					int j =0;
+					while (!rdfID_load.get(j).equals(busEquipment.get(x)[1])) j++;
+					p_conn= p_conn+Double.parseDouble(p_load.get(j));
+					q_conn = q_conn+Double.parseDouble(q_load.get(j));
+				}
+			}
+			busData[i][2]= Double.toString(p_conn);
+			busData[i][3]= Double.toString(q_conn);
+	
+			// Gs
+			busData[i][4] ="0";
+			// Bs
+			busData[i][5] ="0";			
+			// Area
+			busData[i][6]="1";		
+			// Vm
+			busData[i][7]="1";			
+			// Va
+			busData[i][8]="0";		
+			// basekV
+			// This needs to be found by searching for the equipment container reference in the voltage level 
+			// The voltage level rdf_ID can then be used to find the voltage base level BUT in our case we will just use name which is comparable
+			int g =0;
+			while (!voltagelevel_rdfID.get(g).equals(busbar_equipmentCont.get(i))) g++;
+			busData[i][9]=voltagelevel_value.get(g);	
+			// zone
+			busData[i][10]="1";		
+			// Vmax
+			busData[i][11]="1.1";	
+			// Vmin
+			busData[i][12]="0.9";		
+			//	0		1		2	3	4	5	6		7	8	9		10		11		12
+			//	bus_i	type	Pd	Qd	Gs	Bs	area	Vm	Va	baseKV	zone	Vmax	Vmin
+			// 	x		x		x	x	0	0	1		1	0	x		1		1.1		0.9
+		}
+		
+		return busData;
+	}
+	
+	public static String [][] branchBuild(){
+		
+		// TEST METHOD!!!
+		
+		String [] [] busData ={{"1",	"2", "0.00281",	"0.0281",	"0.00712",	"400", "400",	"400",	"0",	"0",	"1",	"-360",	"360"},
+				{"1",	"4",	"0.00304",	"0.0304",	"0.00658",	"0",	"0",	"0",	"0",	"0",	"1",	"-360",	"360"},
+				{"1",	"5",	"0.00064",	"0.0064",	"0.03126",	"0",	"0",	"0",	"0",	"0",	"1",	"-360",	"360"},
+				{"2",	"3",	"0.00108",	"0.0108",	"0.01852",	"0",	"0",	"0",	"0",	"0",	"1",	"-360",	"360"},
+				{"3",	"4",	"0.00297",	"0.0297",	"0.00674",	"0",	"0",	"0",	"0",	"0",	"1",	"-360",	"360"},
+				{"4",	"5",	"0.00297",	"0.0297",	"0.00674",	"240",	"240",	"240",	"0",	"0",	"1",	"-360",	"360"}};
+		return busData;
+	}
+	
+	
+	public void YmatrixCalculation(ArrayList<ArrayList<String>> Branchesy, ArrayList<String> rdfIDbreaker,
 			ArrayList<String> rdfIDtransformer, ArrayList<String> rdfIDline, ArrayList<String> statebreaker,
 			ArrayList<String> Rline, ArrayList<String> Xline, ArrayList<String> Rtransformer,
 			ArrayList<String> Xtransformer, ArrayList<String> bshline, Double[][] Ymatrixre, Double[][] Ymatrixim,
@@ -472,7 +740,7 @@ public class Topology {
 		}
 	}
 
-	private static String toString(Double re, Double im) {
+	private  String toString(Double re, Double im) {
 		if (im == 0)
 			return re + "";
 		if (re == 0)
@@ -482,43 +750,43 @@ public class Topology {
 		return re + " + " + im + "i";
 	}
 
-	private static Double LoadR(Double voltage, String p) {
+	private  Double LoadR(Double voltage, String p) {
 		loadre = voltage * voltage / Double.parseDouble(p);
 		return loadre;
 	}
 
-	private static Double LoadI(Double voltage, String q) {
+	private Double LoadI(Double voltage, String q) {
 		loadim = voltage * voltage / Double.parseDouble(q);
 		return loadim;
 	}
 
-	private static Double divisionre(Double Re, Double Reac) {
+	private Double divisionre(Double Re, Double Reac) {
 		return (Re) / (Re * Re + Reac * Reac);
 	}
 
-	private static Double divisionim(Double Re, Double Reac) {
+	private Double divisionim(Double Re, Double Reac) {
 		return (-Reac) / (Re * Re + Reac * Reac);
 	}
 
-	private static Double times_re(Double are, Double aim, Double bre, Double bim) {
+	private Double times_re(Double are, Double aim, Double bre, Double bim) {
 
 		return are * bre - aim * bim;
 
 	}
 
-	private static Double times_im(Double are, Double aim, Double bre, Double bim) {
+	private Double times_im(Double are, Double aim, Double bre, Double bim) {
 
 		return are * bim + aim * bre;
 
 	}
 
-	private static Double division_re(Double c1r, Double c1i, Double c2r, Double c2i) {
+	private Double division_re(Double c1r, Double c1i, Double c2r, Double c2i) {
 
 		return (c1r * c2r + c1i * c2i) / (c2r * c2r + c2i * c2i);
 
 	}
 
-	private static Double division_im(Double c1r, Double c1i, Double c2r, Double c2i) {
+	private Double division_im(Double c1r, Double c1i, Double c2r, Double c2i) {
 
 		return (c1i * c2r - c1r * c2i) / (c2r * c2r + c2i * c2i);
 

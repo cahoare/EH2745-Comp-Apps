@@ -31,7 +31,7 @@ public class EquipData {
 		// equipment where SSH data stored
 		//private static int [] sshEquip = {4,5,7,9,10};
 		
-		String [] dataNameHold = {"cim:RotatingMachine.p","cim:RotatingMachine.q","cim:RegulatingControl.targetValue", "cim:EnergyConsumer.p", "cim:EnergyConsumer.q", "cim:Switch.open", "cim:TapChanger.step", "cim:RegulatingControl.enabled"};  //hold term for search string. used in exception handling /debugging
+		String [] dataNameHold = {"cim:RotatingMachine.p","cim:RotatingMachine.q","cim:RegulatingControl.targetValue", "cim:EnergyConsumer.p", "cim:EnergyConsumer.q", "cim:Switch.open", "cim:TapChanger.step", "cim:RegulatingControl.enabled","cim:SynchronousMachine.referencePriority"};  //hold term for search string. used in exception handling /debugging
 		
 	
 		try {
@@ -40,10 +40,11 @@ public class EquipData {
 			
 			switch(type) {
 			case 4: //Synch machine
-				data = new String[3];
+				data = new String[4];
 				data[0] = element.getAttribute("rdf:about"); // all items have rdf:ID 
 				data[1] = element.getElementsByTagName(dataNameHold[0]).item(0).getFirstChild().getNodeValue();
 				data[2] = element.getElementsByTagName(dataNameHold[1]).item(0).getFirstChild().getNodeValue();
+				data[3] = element.getElementsByTagName(dataNameHold[8]).item(0).getFirstChild().getNodeValue();
 				break;
 			case 5: //Reg control
 				data = new String[3];
