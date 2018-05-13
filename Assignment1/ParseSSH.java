@@ -45,8 +45,6 @@ public class ParseSSH {
 	static String PASS;
 	
 	
-	
-	
 	public ParseSSH (File SSHFile, String [] equip, String [][] dataNames, int [][] dataIndex) {
 		ParseSSH.SSHFile = SSHFile;
 		ParseSSH.equip = equip;
@@ -55,7 +53,7 @@ public class ParseSSH {
 		sshParse();		
 	}
 
-	private static void sshParse () {
+	private void sshParse () {
 		
 		
 		// just need to find values for Synch machine, regulating control, energy con, Tap changer 
@@ -85,7 +83,7 @@ public class ParseSSH {
 				
 	}
 
-	public static boolean dbUpdate(String [] dbSetup){
+	public boolean dbUpdate(String [] dbSetup){
 
 		
 		JDBC_DRIVER = dbSetup[0];

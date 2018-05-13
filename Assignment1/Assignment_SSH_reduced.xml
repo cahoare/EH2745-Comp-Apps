@@ -206,7 +206,7 @@
     <cim:Switch.open>false</cim:Switch.open>
   </cim:Breaker>
   <cim:Breaker rdf:about="#_6e86cd52-4594-435e-92ce-6dc673288ab4">
-    <cim:Switch.open>true</cim:Switch.open>
+    <cim:Switch.open>false</cim:Switch.open>
   </cim:Breaker>
   <cim:TapChangerControl rdf:about="#_97110e84-7da6-479c-846c-696fdaa83d56">
     <cim:RegulatingControl.discrete>true</cim:RegulatingControl.discrete>

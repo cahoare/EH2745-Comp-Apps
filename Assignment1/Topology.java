@@ -2,6 +2,7 @@
 //package code;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -31,12 +32,14 @@ public class Topology {
 	// VOLTAGE LEVELS
 	private ArrayList<String> voltagelevel_rdfID; // identification
 	private ArrayList<String> voltagelevel_value; // value
+	private ArrayList<String> voltagelevel_basevoltagerdfID; // value
 	// TERMINALS AND CONNECT. NODES INFO
 	private ArrayList<String> rdfID_resource;
 	private ArrayList<String> common_connectnode;
 	// BREAKERS
 	private ArrayList<String> rdfID_breaker;
 	private ArrayList<String> state_breaker;
+	private ArrayList<String> rdfID_breakerCont;
 	// LINES
 	private ArrayList<String> rdfID_line;
 	private ArrayList<String> R_line;
@@ -46,6 +49,7 @@ public class Topology {
 	private ArrayList<String> rdfID_transformer;
 	private ArrayList<String> R_transformer;
 	private ArrayList<String> X_transformer;
+	private ArrayList<String> container_transformer;
 	// GENERATORS
 	private ArrayList<String> rdfID_gen;
 	private ArrayList<String> rdfID_syn;
@@ -57,11 +61,12 @@ public class Topology {
 	private ArrayList<String> q_perc_gen; // assumes 50% to save adding
 	private ArrayList<String> ratedS_gen;
 	private ArrayList<String> referenceP_gen; 
+	private ArrayList<String> rdfID_genCont;
 	// LOADS
 	private ArrayList<String> rdfID_load;
 	private ArrayList<String> p_load;
 	private ArrayList<String> q_load;
-	
+	private ArrayList<String> rdfID_loadCont;
 	
 	// FOR TOPOLOGY BUILD
 	private ArrayList<String[]> futurePaths = new ArrayList<String[]>();
@@ -73,15 +78,28 @@ public class Topology {
 	// PASSED VARIABLES
 	private static String[] equip;
 	private static String[][] dataNames;
+	private static int [][] dataIndex;
+	private static int [][] dataSSHIndex;
 
-	public Topology(String[] equip, String[][] dataNames) {
+	// PASSED VARIABLES FOR CALCULATION
+	private double [] baseImpedance;
+	
+	// FOR BRANCH BUILD
+	String[][] BranchInfo;
+	
+	
+	public Topology(String[] dbSetup, String[] equip, String[][] dataNames, int [][] dataIndex, int [][] dataSSHIndex) {
 		Topology.equip = equip;
 		Topology.dataNames = dataNames;
+		Topology.dataIndex = dataIndex;
+		Topology.dataSSHIndex = dataSSHIndex;
+		
 		busbar_name = new ArrayList<String>();
 		busbar_rdfID = new ArrayList<String>();
 		busbar_equipmentCont = new ArrayList<String>();
 		voltagelevel_rdfID = new ArrayList<String>(); // identification
 		voltagelevel_value = new ArrayList<String>(); // value
+		voltagelevel_basevoltagerdfID = new ArrayList<String>(); 
 		rdfID_resource = new ArrayList<String>();
 		common_connectnode = new ArrayList<String>();
 		rdfID_breaker = new ArrayList<String>();
@@ -93,6 +111,7 @@ public class Topology {
 		rdfID_transformer = new ArrayList<String>();
 		R_transformer = new ArrayList<String>();
 		X_transformer = new ArrayList<String>();
+		container_transformer =  new ArrayList<String>();
 		rdfID_gen = new ArrayList<String>();
 		rdfID_syn = new ArrayList<String>();
 		rdfID_syn_genref = new ArrayList<String>();
@@ -106,44 +125,61 @@ public class Topology {
 		rdfID_load = new ArrayList<String>();
 		p_load = new ArrayList<String>();
 		q_load = new ArrayList<String>();
-	}
-	
-	public void dbBuildtopology(String[] dbSetup) {
-
-		Connection conn = null;
-		Statement stmt = null;
+		rdfID_genCont = new ArrayList<String>();
+		rdfID_loadCont = new ArrayList<String>();
+		rdfID_breakerCont = new ArrayList<String>();
+		
 
 		JDBC_DRIVER = dbSetup[0];
 		DB_URL = dbSetup[1];
 		USER = dbSetup[2];
 		PASS = dbSetup[3];
 		DB_NAME = dbSetup[4];
-
+	
+		
+		
+	}
+	
+	/*
+	 * Method - Builds the topology of the network. 
+	 * 
+	 * Description - Uses arraylists to store all db data. Uses the indexes in each
+	 * arraylist to join the data. Builds a new variable called pastPaths which contains
+	 * info on the elements between buses.
+	 * 
+	 */
+	
+	public String dbBuildtopology() {
+		
+		Connection conn = null;
+		Statement stmt = null;
+		ResultSet rs = null;
+		
 		try {
 			// Register JDBC driver
 			Class.forName(JDBC_DRIVER);
 
 			// Open a connection
 			System.out.println("Connecting to database...");
-			conn = DriverManager.getConnection(DB_URL, USER, PASS);
+			conn = DriverManager.getConnection(DB_URL+DB_NAME+"?user="+USER+"&password="+PASS+"&autoReconnect=true&useSSL=false");
 
 			stmt = conn.createStatement();
 
 			String sql = "USE STUDENTS";
 			stmt.executeUpdate(sql);
-			ResultSet rs;
+
 
 			// Data needed
 			int[][] dataReq = { {}, 
 					{}, 
-					{ 0, 2 }, // VoltageLevel - rdf_ID, name
+					{ 0, 2, 19 }, // VoltageLevel - rdf_ID, name
 					{0,3,4}, // Gen unit
-					{0,21,5,6,7, 15, 16}, // Synch Machine
+					{0,21,5,6,7, 15, 16, 20}, // Synch Machine
 					{},
 					{}, 
-					{0,6,7}, // EnergyConsumer - None
-					{ 0, 9, 10 }, // PowerTransformerEnd
-					{ 0, 12 }, // Breaker - rdf_ID, state
+					{0,6,7, 20}, // EnergyConsumer - None
+					{ 9, 10, 23, 24 }, // PowerTransformerEnd
+					{ 0, 12, 20 }, // Breaker - rdf_ID, state
 					{}, 
 					{}, 
 					{ 26, 27 }, // Terminal - ConnectivityNode and ConductingEquipment
@@ -156,7 +192,6 @@ public class Topology {
 			for (int i = 0; i < equipReq.length; i++) {
 				sql = "Select * From " + equip[equipReq[i]];
 				rs = stmt.executeQuery(sql);
-				System.out.println(sql);
 
 				switch (equipReq[i]) {
 				case 13:
@@ -170,6 +205,7 @@ public class Topology {
 					while (rs.next()) {
 						voltagelevel_rdfID.add(rs.getString(dataNames[dataReq[equipReq[i]][0]][0])); // identification
 						voltagelevel_value.add(rs.getString(dataNames[dataReq[equipReq[i]][1]][0])); // value
+						voltagelevel_basevoltagerdfID.add(rs.getString(dataNames[dataReq[equipReq[i]][2]][0])); // equipment rdfid new
 					}
 					break;
 				case 12:
@@ -182,6 +218,7 @@ public class Topology {
 					while (rs.next()) {
 						rdfID_breaker.add(rs.getString(dataNames[dataReq[equipReq[i]][0]][0]));
 						state_breaker.add(rs.getString(dataNames[dataReq[equipReq[i]][1]][0]));
+						rdfID_breakerCont.add(rs.getString(dataNames[dataReq[equipReq[i]][2]][0]));
 					}
 					break;
 				case 14:
@@ -194,9 +231,10 @@ public class Topology {
 					break;
 				case 8:
 					while (rs.next()) {
-						rdfID_transformer.add(rs.getString(dataNames[dataReq[equipReq[i]][0]][0]));
-						R_transformer.add(rs.getString(dataNames[dataReq[equipReq[i]][1]][0]));
-						X_transformer.add(rs.getString(dataNames[dataReq[equipReq[i]][2]][0]));
+						rdfID_transformer.add(rs.getString(dataNames[dataReq[equipReq[i]][2]][0]));
+						R_transformer.add(rs.getString(dataNames[dataReq[equipReq[i]][0]][0]));
+						X_transformer.add(rs.getString(dataNames[dataReq[equipReq[i]][1]][0]));
+						container_transformer.add(rs.getString(dataNames[dataReq[equipReq[i]][3]][0]));
 					}
 					break;
 				case 3:
@@ -215,6 +253,7 @@ public class Topology {
 						ratedS_gen.add(rs.getString(dataNames[dataReq[equipReq[i]][2]][0])); 
 						q_perc_gen.add(rs.getString(dataNames[dataReq[equipReq[i]][6]][0]));
 						referenceP_gen.add(rs.getString(dataNames[dataReq[equipReq[i]][5]][0]));
+						rdfID_genCont.add(rs.getString(dataNames[dataReq[equipReq[i]][7]][0]));
 					}
 					break;
 				case 7:
@@ -222,45 +261,18 @@ public class Topology {
 						rdfID_load.add(rs.getString(dataNames[dataReq[equipReq[i]][0]][0]));
 						p_load.add(rs.getString(dataNames[dataReq[equipReq[i]][1]][0]));
 						q_load.add(rs.getString(dataNames[dataReq[equipReq[i]][2]][0]));
+						rdfID_loadCont.add(rs.getString(dataNames[dataReq[equipReq[i]][3]][0]));
 					}
 					break;
 				}
 			}
-			
 
-			
-			
-			// We create the busbar matrix here.
-			int nbus = busbar_rdfID.size();
-			Double[][] Ymatrix_re = new Double[nbus][nbus];
-			Double[][] Ymatrix_im = new Double[nbus][nbus];
-			for (int k = 0; k < nbus; k++) {
-				for (int o = 0; o < nbus; o++) {
-					Ymatrix_re[k][o] = 0.0;
-					Ymatrix_im[k][o] = 0.0;
-				}
-			}
 
-			/*
-			 * Could delete? double R=0; double X=0; double one_over_impedance_re=0; double
-			 * one_over_impedance_im=0;
-			 */
-
-			// rdfID_resource is the RDF_ID of the equipment from equipment column of the
-			// terminal table
-			// common_connectnode is the RDFID of the connectivity node, from CN column of
-			// the terminal table
-
-			// Initialisation step - add the equipment type to the conducting equipment in
-			// terminal table (could be done in sql...)
-
-			// equipType =new ArrayList<String>(); // ...doesnt need to be arraylist could
-			// be string array. Initialised in class
-
+			// Initialisation step - add the equipment type to the conducting equipment 
 			for (int i = 0; i < rdfID_resource.size(); i++) {
 				sql = "SELECT EquipmentType FROM rdf_id WHERE rdf_ID=\"" + rdfID_resource.get(i) + "\"";
 				rs = stmt.executeQuery(sql);
-				while (rs.next()) { // Is this while needed.........
+				while (rs.next()) { 
 					equipType.add(rs.getString(1));
 				}
 
@@ -309,18 +321,28 @@ public class Topology {
 				}
 				futurePathsIndex++;
 			}
+			
+			// add the required columns
+			dbAddAssignReq(conn, stmt, rs); // Call the function to update tables with elements required by the assignment 
+			// Calculate the base impedance
+			baseImpedanceCalc(ratedS_gen.get(0));  // Use the first gen
+			
+			return ratedS_gen.get(0);
 
-			
-			for (int i = 0; i < busEquipment.size();i++) {
-				System.out.println(Arrays.toString(busEquipment.get(i)));
-			}
-			
 		} catch (SQLException se) {
 			// Handle errors for JDBC
 			se.printStackTrace();
+			return null;
+			
 		} catch (Exception e) {
 			// Handle errors for Class.forName
 			e.printStackTrace();
+			return null;
+			
+		} finally {
+		    try { if (rs != null) rs.close(); } catch (Exception e) {};
+		    try { if (stmt != null) stmt.close(); } catch (Exception e) {};
+		    try { if (conn != null) conn.close(); } catch (Exception e) {};
 		}
 	}
 
@@ -434,17 +456,68 @@ public class Topology {
 				currentPath.add(busRDFid);
 			}
 		}
-
-		String debugHold = "";
-		for (int c = 0; c < currentPath.size(); c++) {
-			debugHold = debugHold + currentPath.get(c) + " ";
-		}
-		System.out.println(debugHold);
-
 		return currentPath;
 
 	}
 
+	/*
+	 * Method - Add the Base Voltage RDF ID to synch machine, energy con and breaker DB tables
+	 * 
+	 * Description - Since Base Voltage RDF ID is not part of XML scheme for these three pieces of
+	 * equipment but is required to be in table by assignment. Need to find and add to tables. This 
+	 * requires the class variables of arraylists to be populated so can only be called after the 
+	 * topology has been built. Hence, it is called directly from dbBuildTopology
+	 * 
+	 */	
+	public void dbAddAssignReq(Connection conn, Statement stmt, ResultSet rs) {
+
+		DatabaseMetaData md = null;
+		String sql;
+		
+		// add the lists to an overall array so that it can be looped through
+		ArrayList<ArrayList<String>> listHold = new ArrayList<ArrayList<String>>();
+		listHold.add(rdfID_genCont);
+		listHold.add(rdfID_loadCont);
+		listHold.add(rdfID_breakerCont);
+		
+		
+		// Add the new column to the table
+		int [] updateEquip = {4,7,9};
+		
+		try{		
+			// Each equipment links the equipment container to a voltage level RDF_ID, the voltage level RDF_ID table contains the base voltage RDF ID
+			for (int i = 0; i < listHold.size(); i++) {
+				// check that voltage level RDF_ID doesnt exist
+				md = conn.getMetaData();
+				rs = md.getColumns(null, null, equip[updateEquip[i]], dataNames[24][0]);
+				if (!rs.next()) { // if base voltage doesnt exist then add the column and add the data
+					System.out.println("Executing database for base voltage RDF_ID");
+					sql = "ALTER TABLE " + equip[updateEquip[i]] + " ADD " + dataNames[24][0] + " " + dataNames[24][1];
+					System.out.println(sql);
+					stmt.executeUpdate(sql);
+					for (int c= 0; c < listHold.get(i).size(); c++) {
+						int vlInd = 0;
+						System.out.println(listHold.get(i).get(c));
+						
+						while (!voltagelevel_rdfID.get(vlInd).equals(listHold.get(i).get(c))) {
+							vlInd++;
+							voltagelevel_rdfID.get(vlInd);
+						}
+						sql = "UPDATE " + equip[updateEquip[i]] + " SET " + dataNames[24][0] + "='"
+								+ voltagelevel_basevoltagerdfID.get(vlInd) + "' WHERE " + dataNames[20][0] + "='"
+								+ listHold.get(i).get(c) + "'";
+						System.out.println(sql);
+						stmt.executeUpdate(sql);
+					}
+				}
+
+			}
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+		
+	}
 	
 	public String [][] genBuild(){		
 			// generator data
@@ -590,203 +663,314 @@ public class Topology {
 			busData[i][11]="1.1";	
 			// Vmin
 			busData[i][12]="0.9";		
-			//	0		1		2	3	4	5	6		7	8	9		10		11		12
-			//	bus_i	type	Pd	Qd	Gs	Bs	area	Vm	Va	baseKV	zone	Vmax	Vmin
-			// 	x		x		x	x	0	0	1		1	0	x		1		1.1		0.9
 		}
 		
 		return busData;
 	}
 	
-	public static String [][] branchBuild(){
+	/*
+	 * Method - build the branch data
+	 * 
+	 * Description - need to build the y bus within this branch build.
+	 * 
+	 */	
+	public String [][] branchBuild(){
 		
-		// TEST METHOD!!!
+		// branch data
+		//	fbus	tbus	r	x	b	
 		
-		String [] [] busData ={{"1",	"2", "0.00281",	"0.0281",	"0.00712",	"400", "400",	"400",	"0",	"0",	"1",	"-360",	"360"},
-				{"1",	"4",	"0.00304",	"0.0304",	"0.00658",	"0",	"0",	"0",	"0",	"0",	"1",	"-360",	"360"},
-				{"1",	"5",	"0.00064",	"0.0064",	"0.03126",	"0",	"0",	"0",	"0",	"0",	"1",	"-360",	"360"},
-				{"2",	"3",	"0.00108",	"0.0108",	"0.01852",	"0",	"0",	"0",	"0",	"0",	"1",	"-360",	"360"},
-				{"3",	"4",	"0.00297",	"0.0297",	"0.00674",	"0",	"0",	"0",	"0",	"0",	"1",	"-360",	"360"},
-				{"4",	"5",	"0.00297",	"0.0297",	"0.00674",	"240",	"240",	"240",	"0",	"0",	"1",	"-360",	"360"}};
+		///TEST DATA
+		//String [] [] busData ={{"1",	"2", "0.00281",	"0.0281",	"0.00712",	"400", "400",	"400",	"0",	"0",	"1",	"-360",	"360"},
+		//		{"1",	"4",	"0.00304",	"0.0304",	"0.00658",	"0",	"0",	"0",	"0",	"0",	"1",	"-360",	"360"},
+		//		{"1",	"5",	"0.00064",	"0.0064",	"0.03126",	"0",	"0",	"0",	"0",	"0",	"1",	"-360",	"360"},
+		//		{"2",	"3",	"0.00108",	"0.0108",	"0.01852",	"0",	"0",	"0",	"0",	"0",	"1",	"-360",	"360"},
+		//		{"3",	"4",	"0.00297",	"0.0297",	"0.00674",	"0",	"0",	"0",	"0",	"0",	"1",	"-360",	"360"},
+		//		{"4",	"5",	"0.00297",	"0.0297",	"0.00674",	"240",	"240",	"240",	"0",	"0",	"1",	"-360",	"360"}};
+	
+		
+		String [][] hold = buildJavaYBus();
+		
+		String[] Info ={"From", "To", "R"," X"," B" , "rateA",	"rateB",	"rateC",	"ratio",	"angle"	,"status",	"angmin",	"angmax"};
+		String[][] busData = new String[pastPaths.size()][Info.length];
+		for (int i = 0; i < pastPaths.size(); i++) {
+		    for (int j = 0; j < 5; j++) {
+		    	busData[i][j]=BranchInfo[i][j];  
+		    	if(busData[i][j]==null) { // Handle the no shunt capacitance in transformer
+		    			busData[i][j]="0"; 
+		    	}
+		    }
+		    for (int j=5; j < 10; j++) {
+		    	busData[i][j]="0";
+		    }
+		    busData[i][10]=BranchInfo[i][5];
+		    busData[i][11]="-360";
+		    busData[i][12]="360";
+	    }
 		return busData;
 	}
 	
 	
-	public void YmatrixCalculation(ArrayList<ArrayList<String>> Branchesy, ArrayList<String> rdfIDbreaker,
-			ArrayList<String> rdfIDtransformer, ArrayList<String> rdfIDline, ArrayList<String> statebreaker,
-			ArrayList<String> Rline, ArrayList<String> Xline, ArrayList<String> Rtransformer,
-			ArrayList<String> Xtransformer, ArrayList<String> bshline, Double[][] Ymatrixre, Double[][] Ymatrixim,
-			ArrayList<String> busrdfid, String bus) {
-		int branchlength = Branchesy.size();
-		int rowy = 0;
-		int endbus = 0;
-		int nlines = rdfIDline.size();
-		int nbreaker = rdfIDbreaker.size();
-		int ntransformer = rdfIDtransformer.size();
-		ArrayList<ArrayList<Double>> Realpart = new ArrayList<ArrayList<Double>>();
-		ArrayList<ArrayList<Double>> Imaginarypart = new ArrayList<ArrayList<Double>>();
-		ArrayList<Double> Realpart_auxiliar_array = new ArrayList<Double>();
-		ArrayList<Double> Imaginarypart_auxiliar_array = new ArrayList<Double>();
-		Double Realpart_auxiliar = 0.0;
-		Double Imaginarypart_auxiliar = 0.0;
-		Double parallel_re = 0.0;
-		Double parallel_im = 0.0;
+	public String[][] buildJavaYBus() {
 
-		ArrayList<String> Endbus_rdf = new ArrayList<String>(); // WIth this we check if there are parallel branches
-
-		for (int i = 0; i < busrdfid.size(); i++) {
-			if (busrdfid.get(i).equals(bus)) {// Then we are working on the row rowy of the Y matrixes
-				rowy = i;
+		// Create the Y bus matrix 
+		int nbus = busbar_rdfID.size();
+		Double[][] Ymatrix_re = new Double[nbus][nbus];
+		Double[][] Ymatrix_im = new Double[nbus][nbus];
+		for (int k = 0; k < nbus; k++) { // initialise all values to 0
+			for (int o = 0; o < nbus; o++) {
+				Ymatrix_re[k][o] = 0.0;
+				Ymatrix_im[k][o] = 0.0;
 			}
 		}
-		for (int i = 0; i < Branchesy.size(); i++) {
+		
+		BranchInfo = new String[busbar_rdfID.size()][6]; // branch is used but unsure what for
+		
+		// 
+		MatrixCalculation(pastPaths,R_transformer,X_transformer,rdfID_transformer,container_transformer,
+				rdfID_line,R_line,X_line,bsh_line,rdfID_breaker,state_breaker,voltagelevel_rdfID,voltagelevel_basevoltagerdfID,
+				busbar_equipmentCont,busbar_rdfID, Ymatrix_re, Ymatrix_im, rdfID_resource, BranchInfo);
+
+		// Join the two matrices together
+		String[][] Ymatrix = new String[Ymatrix_im.length][Ymatrix_im.length];
+		String Auxiliar = "";
+		for (int i = 0; i < Ymatrix_im.length; i++) {
+		    for (int j = 0; j < Ymatrix_im[i].length; j++) {
+		    	if(Ymatrix_im[i][j]!=0.0){
+		    		Auxiliar= " + " + String.valueOf(Ymatrix_im[i][j])+"j";
+		    	
+		    		Ymatrix[i][j]=String.valueOf(Ymatrix_re[i][j])+Auxiliar;
+		    	}
+		    	else{
+		    			Ymatrix[i][j]=String.valueOf(Ymatrix_re[i][j])+"+"+String.valueOf(Ymatrix_im[i][j]);
+		    	}		    	
+		    }
+	    }
+		return Ymatrix;
+	}
+	
+	
+	public void MatrixCalculation(ArrayList<ArrayList<String>> Paths, ArrayList<String> Rtransformer,
+			ArrayList<String> Xtransformer, ArrayList<String> rdfIDtransformer, ArrayList<String> Containertransformer,
+			ArrayList<String> rdfIDline, ArrayList<String> Rline, ArrayList<String> Xline, ArrayList<String> bshline,
+			ArrayList<String> rdfIDbreaker, ArrayList<String> statebreaker, ArrayList<String> voltagelevelrdfID,
+			ArrayList<String> voltagelevelbasevoltagerdfID, ArrayList<String> busbarequipmentCont,
+			ArrayList<String> busbarrdfID, Double[][] Ymatrixre, Double[][] Ymatrixim,
+			ArrayList<String> rdfIDresource, String[][] Branch_info) {
+		int row = 0;
+		int location_new_baseimpedance = 0;
+		int column = 0;
+		int counter;
+		double addmitance = 0;
+		int counter2 = 0;
+		double appliedZbase;
+		Double Realpart_auxiliar;
+		Double Imaginarypart_auxiliar;
+
+		
+		// 
+		for (int a = 0; a < Paths.size(); a++) {
+			addmitance = 0;
+			for (int i = 0; i < busbarrdfID.size(); i++) {
+
+				if (busbarrdfID.get(i).equals(Paths.get(a).get(0))) {// Then we are working in the row number row of the
+																		// Y matrixes
+					row = i;
+					// Here we choose the Z base we are gonna use
+
+				}
+			}
+			counter2 = 0;
+			while (!busbarequipmentCont.get(row).equals(voltagelevelrdfID.get(counter2))) {
+				counter2++;
+			}
+			appliedZbase = baseImpedance[counter2]; // We start by applying this base impedance. It might change.
+			// It will be changed when going through a transformer
 			Realpart_auxiliar = 0.0;
+
 			Imaginarypart_auxiliar = 0.0;
-			for (int j = 0; j < Branchesy.get(i).size(); j++) {
-				System.out.println("did we get in?");
-				System.out.println(Branchesy.get(i).get(j));
 
-				if (rdfIDbreaker.indexOf(Branchesy.get(i).get(j)) != -1) {// if its -1 it means it's not in that array
-					// we have a breaker// We don't really do anything. The open breakers are
-					// deleted before
-					// if(rdfIDbreaker.indexOf(Branchesy.get(i).get(j))!=0.000){}
-					// else{ClosedBreaker.remove(i); ClosedBreaker.add(false); // This is an open
-					// breaker}
-					System.out.println("We have a breaker breaker");
-				}
-				if (rdfIDline.indexOf(Branchesy.get(i).get(j)) != -1) {
-					Realpart.get(i).add(Double.parseDouble(Rline.get(rdfIDline.indexOf(Branchesy.get(i).get(j)))));
-					Imaginarypart.get(i).add(Double.parseDouble(Rline.get(rdfIDline.indexOf(Branchesy.get(i).get(j)))));
-					Ymatrixim[rowy][rowy] = Double.parseDouble(bshline.get(rdfIDline.indexOf(Branchesy.get(i).get(j))));
-					Imaginarypart_auxiliar = Imaginarypart_auxiliar + Realpart.get(i).get(j); // Series resistance in
-																								// the branch j
-					Realpart_auxiliar = Realpart_auxiliar + Imaginarypart.get(i).get(j);// Series reactance in the
-																						// branch j
-					System.out.println("We have a line");
-				}
-				if (rdfIDtransformer.indexOf(Branchesy.get(i).get(j)) != -1) {
-					// we have a transformer
-					Realpart.get(i).add(
-							Double.parseDouble(Rtransformer.get(rdfIDtransformer.indexOf(Branchesy.get(i).get(j)))));
-					Imaginarypart.get(i).add(
-							Double.parseDouble(Rtransformer.get(rdfIDtransformer.indexOf(Branchesy.get(i).get(j)))));
-					Imaginarypart_auxiliar = Imaginarypart_auxiliar + Realpart.get(i).get(j); // Series resistance in
-																								// the branch j
-					Realpart_auxiliar = Realpart_auxiliar + Imaginarypart.get(i).get(j);// Series reactance in the
-																						// branch j
-					System.out.println("We have a transformer");
-				}
-				if (j == Branchesy.get(i).size() - 1) {// End of this branch
-					for (int p = 0; p < busrdfid.size(); p++) {
-						if (busrdfid.get(p).equals(Branchesy.get(i).get(j))) {// Then we are working on the column p of
-																				// the Y matrixes // for(int f=0;
-																				// f<Realpart.get(i).size();f++){
-							// The end busbar is the p one of the busrdfid vector
-							Endbus_rdf.add(Branchesy.get(i).get(j)); // this is the end bus in the i branch
-							Realpart_auxiliar_array.add(Realpart_auxiliar);
-							Imaginarypart_auxiliar_array.add(Imaginarypart_auxiliar);
+			Branch_info[a][0] = String.valueOf(row + 1);
+			for (int j = 1; j < Paths.get(a).size(); j++) { // We begin from 1 because 0 is busbar
+				if (rdfIDbreaker.indexOf(Paths.get(a).get(j)) != -1) {
+					Branch_info[a][5] = statebreaker.get(rdfIDbreaker.indexOf(Paths.get(a).get(j)));
+					// We found a breaker
+					/*
+					 * if(statebreaker.get(rdfIDbreaker.indexOf(Paths.get(a).get(j)))!="1"){
+					 * System.out.println("We break always"); break ; }else{}
+					 */
 
-						}
+				}
+				if (rdfIDline.indexOf(Paths.get(a).get(j)) != -1) { // We found a line
+
+					Realpart_auxiliar = Realpart_auxiliar
+							+ Double.parseDouble(Rline.get(rdfIDline.indexOf(Paths.get(a).get(j)))) / appliedZbase; // Series
+																													// resistance
+																													// in
+					// the branch j
+
+					Imaginarypart_auxiliar = Imaginarypart_auxiliar
+							+ Double.parseDouble(Xline.get(rdfIDline.indexOf(Paths.get(a).get(j)))) / appliedZbase;// Series
+																													// reactance
+																													// in
+																													// the
+																													// line
+
+					if (j == 1 || j == 2) {
+						addmitance = Double.parseDouble(bshline.get(rdfIDline.indexOf(Paths.get(a).get(j)))) * 0.5
+								* appliedZbase;
+						Ymatrixim[row][row] = Ymatrixim[row][row] + addmitance;
 					}
 
-					for (int r = 0; r < Endbus_rdf.size() - 1; r++) { // this is to check if there are parallel lines
-																		// and calculate it
+					Branch_info[a][2] = String.valueOf(Realpart_auxiliar);
+					Branch_info[a][3] = String.valueOf(Imaginarypart_auxiliar);
+					Branch_info[a][4] = String.valueOf(addmitance * 2);
 
-						if (Endbus_rdf.get(r).equals(Endbus_rdf.get(Endbus_rdf.size() - 1))) {// with this you compare
-																								// each end bus already
-																								// found with the one
-																								// found now
-							// The r branch is in parallel with the last one calculated // which is the i
-							// branch
-							parallel_re = division_re(
-									times_re(Realpart_auxiliar_array.get(r), Imaginarypart_auxiliar_array.get(r),
-											Realpart_auxiliar_array.get(i), Imaginarypart_auxiliar_array.get(i)),
-									times_im(Realpart_auxiliar_array.get(r), Imaginarypart_auxiliar_array.get(r),
-											Realpart_auxiliar_array.get(i), Imaginarypart_auxiliar_array.get(i)),
-									Realpart_auxiliar_array.get(r) + Realpart_auxiliar_array.get(i),
-									Imaginarypart_auxiliar_array.get(r) + Imaginarypart_auxiliar_array.get(i));
-							parallel_im = division_im(
-									times_re(Realpart_auxiliar_array.get(r), Imaginarypart_auxiliar_array.get(r),
-											Realpart_auxiliar_array.get(i), Imaginarypart_auxiliar_array.get(i)),
-									times_im(Realpart_auxiliar_array.get(r), Imaginarypart_auxiliar_array.get(r),
-											Realpart_auxiliar_array.get(i), Imaginarypart_auxiliar_array.get(i)),
-									Realpart_auxiliar_array.get(r) + Realpart_auxiliar_array.get(i),
-									Imaginarypart_auxiliar_array.get(r) + Imaginarypart_auxiliar_array.get(i));
-							System.out.println("HIjo puta hasta aqui funciona");
-							Realpart_auxiliar_array.set(r, parallel_re); // we replace the value we had in the r branch
-							Imaginarypart_auxiliar_array.set(r, parallel_im);
-							// Now we can also delete the one we have used for the parallel not to repeat
-							// this calculation;
-							Endbus_rdf.remove(Endbus_rdf.get(Endbus_rdf.size() - 1));
-							Realpart_auxiliar_array
-									.remove(Realpart_auxiliar_array.get(Realpart_auxiliar_array.size() - 1));
-							Imaginarypart_auxiliar_array
-									.remove(Imaginarypart_auxiliar_array.get(Imaginarypart_auxiliar_array.size() - 1));
+				}
 
-						}
+				if (rdfIDtransformer.indexOf(Paths.get(a).get(j)) != -1) { // We found a transformer
+
+					if (voltagelevelbasevoltagerdfID.get(counter2) == Containertransformer
+							.get(rdfIDtransformer.indexOf(Paths.get(a).get(j)))
+							&& (int) Double.parseDouble(
+									Rtransformer.get(rdfIDtransformer.indexOf(Paths.get(a).get(j)))) == 0) {
+						// We are going through the secondary side of the transformer, then we need to
+						// change the appplied Zbase
+						// to calculate the p.u. transformer impedance, since it is not zero as seen for
+						// the other side
+						location_new_baseimpedance = voltagelevelbasevoltagerdfID
+								.indexOf(Containertransformer.get(rdfIDtransformer.indexOf(Paths.get(a).get(j)) - 1));
+						appliedZbase = baseImpedance[location_new_baseimpedance];
+						Realpart_auxiliar = Realpart_auxiliar
+								+ Double.parseDouble(Rtransformer.get(rdfIDtransformer.indexOf(Paths.get(a).get(j))))
+										/ appliedZbase;
+						Imaginarypart_auxiliar = Imaginarypart_auxiliar
+								+ Double.parseDouble(Xtransformer.get(rdfIDtransformer.indexOf(Paths.get(a).get(j))))
+										/ appliedZbase;
+						Branch_info[a][2] = String.valueOf(Realpart_auxiliar);
+						Branch_info[a][3] = String.valueOf(Imaginarypart_auxiliar);
+					} else {
+
+						Realpart_auxiliar = Realpart_auxiliar
+								+ Double.parseDouble(Rtransformer.get(rdfIDtransformer.indexOf(Paths.get(a).get(j))))
+										/ appliedZbase; // Series resistance in
+						// the branch
+
+						Imaginarypart_auxiliar = Imaginarypart_auxiliar
+								+ Double.parseDouble(Xtransformer.get(rdfIDtransformer.indexOf(Paths.get(a).get(j))))
+										/ appliedZbase;// Series reactance in the
+						Branch_info[a][2] = String.valueOf(Realpart_auxiliar);
+						Branch_info[a][3] = String.valueOf(Imaginarypart_auxiliar);
+						location_new_baseimpedance = voltagelevelbasevoltagerdfID
+								.indexOf(Containertransformer.get(rdfIDtransformer.indexOf(Paths.get(a).get(j)) + 1));
+						appliedZbase = baseImpedance[location_new_baseimpedance];
 					}
+
+					/*
+					 * if(j==1){ In case we add b and g to the transformer
+					 * Ymatrixim[row][row]=Ymatrixim[row][row]+Double.parseDouble(bshtransformer.get
+					 * (rdfIDtransformer.indexOf(Paths.get(a).get(j))));
+					 * Ymatrixre[row][row]=Ymatrixim[row][row]+Double.parseDouble(gtransformer.get(
+					 * rdfIDtransformer.indexOf(Paths.get(a).get(j)))); }
+					 */
 				}
 
-			}
-		}
+				if (j == Paths.get(a).size() - 1) { // End of the path
 
-		for (int x = 0; x < Endbus_rdf.size(); x++) {
-			for (int y = 0; y < busrdfid.size(); y++) {
-				if (Endbus_rdf.get(x) == busrdfid.get(y)) {
-					Ymatrixim[rowy][y] = Imaginarypart_auxiliar_array.get(x);
-					Ymatrixre[rowy][y] = Imaginarypart_auxiliar_array.get(x);
+					counter = 0;
+					while (!Paths.get(a).get(j).equals(busbarrdfID.get(counter))) { // Let's find which bus we have at
+																					// the end
+						counter++;
+					}
+					column = counter;
+					Branch_info[a][1] = String.valueOf(counter + 1);
+					Ymatrixim[column][column] = Ymatrixim[column][column] + addmitance; // The admitance of the line
+																						// needs to be added to both bus
+																						// ends!
+				}
+
+			} // Now we know in which row of the matrixes we have to put in the elements
+
+			// We have to check if we have done a path among this two bus buses // lines in
+			// parallel
+
+			if (Ymatrixre[row][column] != 0.0 && Ymatrixim[row][column] != 0.0) {
+				Ymatrixre[row][column] = parallelre(Ymatrixre[row][column], Ymatrixim[row][column], Realpart_auxiliar,
+						Imaginarypart_auxiliar);
+				Ymatrixim[row][column] = parallelim(Ymatrixre[row][column], Ymatrixim[row][column], Realpart_auxiliar,
+						Imaginarypart_auxiliar);
+				Ymatrixre[column][row] = Ymatrixre[row][column];
+				Ymatrixim[column][row] = Ymatrixim[row][column];
+			} else {// we have already gone through this path. We need to calculate the parallel
+					// equivalent
+				Ymatrixre[row][column] = Realpart_auxiliar;
+				Ymatrixim[row][column] = Imaginarypart_auxiliar;
+				Ymatrixre[column][row] = Ymatrixre[row][column]; // We never repeat paths so have to add it like this
+																	// for the other path among the same buses
+				Ymatrixim[column][row] = Ymatrixim[row][column];
+			}
+
+		}
+		for (int i = 0; i < Ymatrixre.length; i++) {
+			for (int e = 0; e < Ymatrixre.length; e++) {
+				if (Ymatrixre[i][e] != 0.0 && e != i) {
+					Ymatrixre[i][i] = Ymatrixre[i][i] + divisionre(Ymatrixre[i][e], Ymatrixim[i][e]);
+					Ymatrixim[i][i] = Ymatrixim[i][i] + divisionim(Ymatrixre[i][e], Ymatrixim[i][e]);
 				}
 			}
 		}
 	}
 
-	private  String toString(Double re, Double im) {
-		if (im == 0)
-			return re + "";
-		if (re == 0)
-			return im + "i";
-		if (im < 0)
-			return re + " - " + (-im) + "i";
-		return re + " + " + im + "i";
+	
+	/*
+	 * Method - Add a base impedance to the voltage level matrix  
+	 * 
+	 * Description - Called as part of topology build. Is referenced through javaYbus and
+	 * the branch build methods. Use class variable.
+	 *
+	 */
+	private void baseImpedanceCalc(String base_aparent_power) {
+		baseImpedance = new double[voltagelevel_basevoltagerdfID.size()];
+		// base_aparent_power Max Operating Power from the generating unit. 
+		for (int i = 0; i < voltagelevel_basevoltagerdfID.size(); i++) {
+			baseImpedance[i] = Math.pow(Double.parseDouble(voltagelevel_value.get(i)), 2)
+					/ Double.parseDouble(base_aparent_power);
+		}
 	}
 
-	private  Double LoadR(Double voltage, String p) {
-		loadre = voltage * voltage / Double.parseDouble(p);
-		return loadre;
-	}
-
-	private Double LoadI(Double voltage, String q) {
-		loadim = voltage * voltage / Double.parseDouble(q);
-		return loadim;
-	}
-
-	private Double divisionre(Double Re, Double Reac) {
+	private static Double divisionre(Double Re, Double Reac) { // 1/Impedance
 		return (Re) / (Re * Re + Reac * Reac);
 	}
 
-	private Double divisionim(Double Re, Double Reac) {
+	private static Double divisionim(Double Re, Double Reac) { // 1/Impedance
 		return (-Reac) / (Re * Re + Reac * Reac);
 	}
-
-	private Double times_re(Double are, Double aim, Double bre, Double bim) {
+	private static Double parallelre(Double pre, Double pim, Double per2, Double pei2){
+		
+		return division_re(times_re(pre, pim, per2, pei2),times_im(pre, pim, per2, pei2),pre+per2,pim+pei2);
+	}
+	private static Double parallelim(Double lre, Double lim, Double ler2, Double lei2){
+		
+		return division_im(times_re(lre, lim, ler2, lei2),times_im(lre, lim, ler2, lei2),lre+ler2,lim+lei2);
+	}
+	private static Double times_re(Double are, Double aim, Double bre, Double bim) {
 
 		return are * bre - aim * bim;
 
 	}
 
-	private Double times_im(Double are, Double aim, Double bre, Double bim) {
+	private static Double times_im(Double are, Double aim, Double bre, Double bim) {
 
 		return are * bim + aim * bre;
 
 	}
 
-	private Double division_re(Double c1r, Double c1i, Double c2r, Double c2i) {
+	private static Double division_re(Double c1r, Double c1i, Double c2r, Double c2i) {
 
 		return (c1r * c2r + c1i * c2i) / (c2r * c2r + c2i * c2i);
 
 	}
 
-	private Double division_im(Double c1r, Double c1i, Double c2r, Double c2i) {
+	private static Double division_im(Double c1r, Double c1i, Double c2r, Double c2i) {
 
 		return (c1i * c2r - c1r * c2i) / (c2r * c2r + c2i * c2i);
 

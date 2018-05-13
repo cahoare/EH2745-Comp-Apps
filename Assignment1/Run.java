@@ -23,6 +23,7 @@ import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.wb.swt.SWTResourceManager;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.Label;
+import java.util.StringJoiner;
 
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -126,6 +127,8 @@ public class Run {
 	private boolean topProcessed;
 	private boolean caseFileBuilt = false; //slight inconsistency in methods
 	
+	private static String baseS;
+	private static String [][] yBus;
 	
 	private static String [][] busData;
 	private static String [][] genData;
@@ -145,37 +148,35 @@ public class Run {
 		// two key symplifying assumptions made -
 		//	1 - the tap changers arent used in transformers
 		//	2 - that a shunt capacitor regulates to the required voltage
-		//  3 - that the reference generator is connected
+		//  3 - that the reference generator is connected. doesnt look for islanding
 		// 4 -how is gen min and max Q calculated???
+		// 5 - considers only the simple transformer model - no shunt impedance...
+		
+		// need to change shunt capacitors? look up cim documentation to understand how this works.....
+		// so shunt compensators do have a regulating control but it needs to be enabled. It looks like if not enabled then it is static...
+		
+		// there is regulating control on the three shunt compensators and the synch gen
+		// need to add this secondary processing to make sure bare requirements are included in database
 
-		boolean debug = false;
-		if (debug) {
-			File EQFile = new File("Assignment_EQ_reduced.xml");
-			ParseEQ parserEQ = new ParseEQ(EQFile, equip, dataNames, dataIndex);
-			Boolean eqImported = parserEQ.dbBuild(dbSetup);
-			
-			File SSHFile = new File("Assignment_SSH_reduced.xml");
-			ParseSSH parserSSH = new ParseSSH(SSHFile, equip, dataNames, dataSSHIndex);
-			Boolean sshImported = parserSSH.dbUpdate(dbSetup);
-			
-			Topology topProcessor = new Topology(equip, dataNames);
-			topProcessor.dbBuildtopology(dbSetup);
-			
-			Run.busData = topProcessor.busBuild();
-			Run.genData = topProcessor.genBuild();
-			Run.branchData = topProcessor.branchBuild();
-			
-			boolean caseBuildSuccess = caseFileBuild();
-			Writer pfData = runPowerFlow();
-		}
 		try {
 			Run window = new Run();
 			window.open();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		
+		
 	}
 
+	/*
+	 * Method - Build case file for matpower to use
+	 * 
+	 * Description - uses the folder directory chosen from GUI. Writes the
+	 * values from topology processing into format needed by matpower. Saves
+	 * as file "casefile". Will overwrite file if in directory. 
+	 * 
+	 */
+	
 	public static boolean caseFileBuild() {
 		
         try {
@@ -184,7 +185,7 @@ public class Run {
             OutputStreamWriter osw = new OutputStreamWriter(fs);    
             Writer w = new BufferedWriter(osw);
            
-            w.write("function mpc = casefile \n mpc.version = '2'; \n mpc.baseMVA = 100;");
+            w.write("function mpc = casefile \n mpc.version = '2'; \n mpc.baseMVA = "+ baseS +";");
 
             // bus data
             w.write("%% bus data \r\n %	bus_i	type	Pd      Qd		Gs      Bs	area	Vm	Va	baseKV	zone	Vmax	Vmin \r\n");
@@ -230,6 +231,14 @@ public class Run {
 		
 	}
 	
+	
+	/*
+	 * Method - Runs the powerflow calc from Matlab
+	 * 
+	 * Description - starts matlab asynchornously. Evaluates the function
+	 * Returns a stringwriter so output can be printed to screen. 
+	 * 
+	 */
 	public static Writer runPowerFlow() {
 		
         Writer output = new StringWriter();
@@ -270,6 +279,14 @@ public class Run {
 	    }
 	}
 	    
+
+	/*
+	 * Method - Runs the ybus calc from Matlab
+	 * 
+	 * Description - starts matlab asynchornously. Evaluates the function
+	 * Returns a stringwriter so output can be printed to screen. 
+	 * 
+	 */
 	public static Writer runYbus() {
       
 		Writer output = new StringWriter();
@@ -310,7 +327,13 @@ public class Run {
 	    }
 	}
 	
-	
+
+	/*
+	 * Method - Creates an EQ parser and parses the EQ file
+	 * 
+	 * Description - 
+	 * 
+	 */
 	public void eqImport() {
 		try {
 			File EQFile = new File(eqFileName);
@@ -322,7 +345,12 @@ public class Run {
 		}
 	}
 
-	
+	/*
+	 * Method - Creates an SSH parser and parses the SSH file
+	 * 
+	 * Description - 
+	 * 
+	 */
 	public void sshImport() {
 		try{
 			File SSHFile = new File(sshFileName);
@@ -334,15 +362,22 @@ public class Run {
 		}
 	}
 
-	
+	/*
+	 * Method - Creates a topology processer and processes the topology
+	 * 
+	 * Description - 
+	 * 
+	 */
 	public void topProcess() {
 		try{
-			Topology topProcessor = new Topology(equip, dataNames);
-			topProcessor.dbBuildtopology(dbSetup);
+			Topology topProcessor = new Topology(dbSetup,equip, dataNames,dataIndex, dataSSHIndex);
 			
+			topProcessor.buildJavaYBus();
+			baseS = topProcessor.dbBuildtopology();
 			Run.busData = topProcessor.busBuild();
 			Run.genData = topProcessor.genBuild();
 			Run.branchData = topProcessor.branchBuild();
+			Run.yBus = topProcessor.buildJavaYBus(); 
 			topProcessed = true;
 			
 		}
@@ -352,8 +387,8 @@ public class Run {
 	}
 
 	
-	/**
-	 * Open the window.
+	/*
+	 * Graphics - open the window
 	 */
 	public void open() {
 		Display display = Display.getDefault();
@@ -367,7 +402,9 @@ public class Run {
 		}
 	}
 
-	
+	/*
+	 * Graphics - create contents in the window
+	 */
 	protected void createContents() {
 		shlUserInterface = new Shell();
 		shlUserInterface.setSize(450, 348);
@@ -573,6 +610,7 @@ public class Run {
 					chooseMatPath.setEnabled(false);
 					mpPathLbl.setText("Select Matpower Path");
 			    	sshfilelabel.setText(defaultFile);
+			    	btnRunJavaYbus.setEnabled(false);
 					btnPF.setEnabled(false);
 					btnYBus.setEnabled(false);
 				}
@@ -597,6 +635,7 @@ public class Run {
 						buildFile.setEnabled(false);
 						viewTop.setEnabled(false);
 						chooseMatPath.setEnabled(false);
+						btnRunJavaYbus.setEnabled(false);
 						mpPathLbl.setText("Select Matpower Path");
 						btnPF.setEnabled(false);
 						btnYBus.setEnabled(false);
@@ -629,6 +668,7 @@ public class Run {
 						topprocess.setEnabled(true);
 						viewTop.setEnabled(true);
 						chooseMatPath.setEnabled(true);
+						btnRunJavaYbus.setEnabled(true);
 					}
 				}
 				else {
@@ -704,9 +744,9 @@ public class Run {
 					chooser.setDialogTitle("Choose MatPower Directory");
 					chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 					chooser.setAcceptAllFileFilterUsed(false);
-					chooser.showOpenDialog(null);
-					matPowerPath = chooser.getSelectedFile().getCanonicalPath();
-	
+					if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+						matPowerPath = chooser.getSelectedFile().getCanonicalPath();
+					}
 	
 				    // ideally would check that the powerflow mfile is in this directory...
 					if (matPowerPath != null) {
@@ -734,6 +774,7 @@ public class Run {
 						buildFile.setEnabled(false);
 						btnPF.setEnabled(true);
 						btnYBus.setEnabled(true);
+						
 					}
 				} else {
 					JOptionPane.showMessageDialog(null, "Cannot confirm topology - please reload EQ");
@@ -807,6 +848,28 @@ public class Run {
 					JOptionPane.showMessageDialog(null, "Error Occurred - Please retry");
 				}
 				
+			}
+		});
+		btnRunJavaYbus.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				if (topProcessed) {
+					
+					String text = "This is the Y-bus built from Java in per unit values. \r\n Ybus = \r\n";
+					//Convert 2D yBus to string
+					StringJoiner sj = new StringJoiner(System.lineSeparator());
+					for (String[] row : yBus) {
+					    sj.add(Arrays.toString(row));
+					}
+					text = text + sj.toString();
+					
+					try {
+						DataViewer ybusViewer = new DataViewer();
+						ybusViewer.open(text);
+					} catch (Exception f) {
+						f.printStackTrace();
+					}
+				}
 			}
 		});
 	}

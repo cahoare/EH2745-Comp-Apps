@@ -53,7 +53,7 @@ public class ParseEQ {
 	
 	}
 
-	private static void eqParse () {
+	private void eqParse () {
 		
 		
 		listEquip = new ArrayList<NodeList>(); 
@@ -83,7 +83,7 @@ public class ParseEQ {
 				
 	}
 
-	public static boolean dbBuild(String [] dbSetup){
+	public boolean dbBuild(String [] dbSetup){
 
 		
 		JDBC_DRIVER = dbSetup[0];
