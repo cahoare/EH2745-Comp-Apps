@@ -60,18 +60,20 @@ public class Run {
 			{"Enabled", "BOOLEAN"}, // 14 - SSH values
 			{"referencePriority", "INT"}, // **** 15 - SSH values
 			{"qPercent", "FLOAT(16,10)"}, // **** 16 
-			{"RDF_ID_Region", "VARCHAR (38)"},//17
-			{"RDF_ID_Substation", "VARCHAR (38)"}, //18
-			{"RDF_ID_BaseVoltage", "VARCHAR (38)"}, //19
-			{"RDF_ID_EquipmentContainer", "VARCHAR (38)"}, //20
-			{"RDF_ID_GeneratingUnit", "VARCHAR (38)"},//21
-			{"RDF_ID_RegulatingControl", "VARCHAR (38)"}, //22
-			{"RDF_ID_PowerTransformer", "VARCHAR (38)"}, //23
-			{"RDF_ID_BaseVoltage", "VARCHAR (38)"}, //24 - added to deal with CIM inconsistency
-			{"RDF_ID_ConnectivityContainer", "VARCHAR (38)"}, //25 - for connectivity nodes
-			{"RDF_ID_ConnectivityNode", "VARCHAR (38)"}, //26 - for connectivity nodes
-			{"RDF_ID_ConductingEquipmentResource", "VARCHAR (38)"}, //27 - for conducting equipment resource
-			{"RDF_ID_EquipmentContainer", "VARCHAR (38)"}}; //28 - EquipmentContainer-Find Voltage Level in a busbar
+			//{"bpersection", "FLOAT(16,10)"}, //17
+			//{"gpersection", "FLOAT(16,10)"}, //18
+			{"RDF_ID_Region", "VARCHAR (38)"},//19
+			{"RDF_ID_Substation", "VARCHAR (38)"}, //20
+			{"RDF_ID_BaseVoltage", "VARCHAR (38)"}, //21
+			{"RDF_ID_EquipmentContainer", "VARCHAR (38)"}, //22
+			{"RDF_ID_GeneratingUnit", "VARCHAR (38)"},//23
+			{"RDF_ID_RegulatingControl", "VARCHAR (38)"}, //24
+			{"RDF_ID_PowerTransformer", "VARCHAR (38)"}, //25
+			{"RDF_ID_BaseVoltage", "VARCHAR (38)"}, //26 - added to deal with CIM inconsistency
+			{"RDF_ID_ConnectivityContainer", "VARCHAR (38)"}, //27 - for connectivity nodes
+			{"RDF_ID_ConnectivityNode", "VARCHAR (38)"}, //28 - for connectivity nodes
+			{"RDF_ID_ConductingEquipmentResource", "VARCHAR (38)"}, //29 - for conducting equipment resource
+			{"RDF_ID_EquipmentContainer", "VARCHAR (38)"}}; //30 - EquipmentContainer-Find Voltage Level in a busbar
 
 	
 	

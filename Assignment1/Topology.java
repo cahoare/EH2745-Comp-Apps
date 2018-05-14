@@ -726,199 +726,225 @@ public class Topology {
 		BranchInfo = new String[busbar_rdfID.size()][6]; // branch is used but unsure what for
 		
 		// 
-		MatrixCalculation(pastPaths,R_transformer,X_transformer,rdfID_transformer,container_transformer,
-				rdfID_line,R_line,X_line,bsh_line,rdfID_breaker,state_breaker,voltagelevel_rdfID,voltagelevel_basevoltagerdfID,
-				busbar_equipmentCont,busbar_rdfID, Ymatrix_re, Ymatrix_im, rdfID_resource, BranchInfo);
+		MatrixCalculation( Ymatrix_re, Ymatrix_im);
 
 		// Join the two matrices together
 		String[][] Ymatrix = new String[Ymatrix_im.length][Ymatrix_im.length];
-		String Auxiliar = "";
+
 		for (int i = 0; i < Ymatrix_im.length; i++) {
 		    for (int j = 0; j < Ymatrix_im[i].length; j++) {
-		    	if(Ymatrix_im[i][j]!=0.0){
-		    		Auxiliar= " + " + String.valueOf(Ymatrix_im[i][j])+"j";
+		    	if(Ymatrix_im[i][j]==0.0){
+		    		
 		    	
-		    		Ymatrix[i][j]=String.valueOf(Ymatrix_re[i][j])+Auxiliar;
+		    		Ymatrix[i][j]=String.valueOf(Ymatrix_re[i][j]);
 		    	}
+		    	else if(Ymatrix_im[i][j]<0){		   Ymatrix[i][j]=String.valueOf(Ymatrix_re[i][j])+" "+String.valueOf(Ymatrix_im[i][j]); 	
+			    }
+		    	
 		    	else{
-		    			Ymatrix[i][j]=String.valueOf(Ymatrix_re[i][j])+"+"+String.valueOf(Ymatrix_im[i][j]);
+		    			Ymatrix[i][j]=String.valueOf(Ymatrix_re[i][j])+"+"+String.valueOf(Ymatrix_im[i][j]+"j");
 		    	}		    	
-		    }
-	    }
+		    
+	    }}
 		return Ymatrix;
 	}
 	
-	
-	public void MatrixCalculation(ArrayList<ArrayList<String>> Paths, ArrayList<String> Rtransformer,
-			ArrayList<String> Xtransformer, ArrayList<String> rdfIDtransformer, ArrayList<String> Containertransformer,
-			ArrayList<String> rdfIDline, ArrayList<String> Rline, ArrayList<String> Xline, ArrayList<String> bshline,
-			ArrayList<String> rdfIDbreaker, ArrayList<String> statebreaker, ArrayList<String> voltagelevelrdfID,
-			ArrayList<String> voltagelevelbasevoltagerdfID, ArrayList<String> busbarequipmentCont,
-			ArrayList<String> busbarrdfID, Double[][] Ymatrixre, Double[][] Ymatrixim,
-			ArrayList<String> rdfIDresource, String[][] Branch_info) {
-		int row = 0;
+	public void MatrixCalculation( Double[][] Ymatrix_re, Double[][] Ymatrix_im) {
+		
+		int busRow = 0;
 		int location_new_baseimpedance = 0;
 		int column = 0;
 		int counter;
+		double auxiliar = 0;
 		double addmitance = 0;
-		int counter2 = 0;
+
 		double appliedZbase;
-		Double Realpart_auxiliar;
-		Double Imaginarypart_auxiliar;
-
 		
-		// 
-		for (int a = 0; a < Paths.size(); a++) {
-			addmitance = 0;
-			for (int i = 0; i < busbarrdfID.size(); i++) {
-
-				if (busbarrdfID.get(i).equals(Paths.get(a).get(0))) {// Then we are working in the row number row of the
+		for (int l = 0; l < pastPaths.size(); l++) { // For branch info set B to 0 as default and state to unknown  
+			BranchInfo[l][4] = "0";
+			BranchInfo[l][5] = "1"; // initialise the path as valid
+		}
+		
+		// start iterating down each path
+		for (int a = 0; a < pastPaths.size(); a++) {
+			addmitance = 0.0;
+			busRow = 0;
+			column = 0;
+			
+			// each path starts with a bus bar so we find the index of the starting bus bar in the bus table 
+			for (int i = 0; i < busbar_rdfID.size(); i++) {
+				if (busbar_rdfID.get(i).equals(pastPaths.get(a).get(0))) {// Then we are working in the row number row of the
 																		// Y matrixes
-					row = i;
+					busRow = i;
 					// Here we choose the Z base we are gonna use
-
 				}
 			}
-			counter2 = 0;
-			while (!busbarequipmentCont.get(row).equals(voltagelevelrdfID.get(counter2))) {
-				counter2++;
+			
+			// find the base voltage of the initial bus bar 
+			int voltRow = 0;
+			while (!busbar_equipmentCont.get(busRow).equals(voltagelevel_rdfID.get(voltRow))) {
+				voltRow++;
 			}
-			appliedZbase = baseImpedance[counter2]; // We start by applying this base impedance. It might change.
-			// It will be changed when going through a transformer
-			Realpart_auxiliar = 0.0;
+			
+			// We start by applying this base impedance. It might change through going through a transformer
+			appliedZbase = baseImpedance[voltRow]; 
+			
+			// Initialise the real and imag parts of the y bus element
+			double Realpart_auxiliar = 0.0;
+			double Imaginarypart_auxiliar = 0.0;
 
-			Imaginarypart_auxiliar = 0.0;
+			BranchInfo[a][0] = String.valueOf(busRow + 1); // set the "bus from" in the branch array
 
-			Branch_info[a][0] = String.valueOf(row + 1);
-			for (int j = 1; j < Paths.get(a).size(); j++) { // We begin from 1 because 0 is busbar
-				if (rdfIDbreaker.indexOf(Paths.get(a).get(j)) != -1) {
-					Branch_info[a][5] = statebreaker.get(rdfIDbreaker.indexOf(Paths.get(a).get(j)));
+			
+			for (int j = 1; j < pastPaths.get(a).size(); j++) { // We begin from 1 because 0 is busbar
+				if (rdfID_breaker.indexOf(pastPaths.get(a).get(j)) != -1) { //if there is a breaker inside
+					if (BranchInfo[a][5].equals("1")) {
+						BranchInfo[a][5] = state_breaker.get(rdfID_breaker.indexOf(pastPaths.get(a).get(j)));
+					} // If the branch has two breakers and one is open, the state of the branch has
+						// to remain like "out of order"
+					// After we find an open breaker "0" we don't get more values for the branch
+					// state BranchInfo[a][5]
+
 					// We found a breaker
 					/*
-					 * if(statebreaker.get(rdfIDbreaker.indexOf(Paths.get(a).get(j)))!="1"){
+					 * if(state_breaker.get(rdfID_breaker.indexOf(pastPaths.get(a).get(j)))!="1"){
 					 * System.out.println("We break always"); break ; }else{}
 					 */
 
 				}
-				if (rdfIDline.indexOf(Paths.get(a).get(j)) != -1) { // We found a line
+				if (rdfID_line.indexOf(pastPaths.get(a).get(j)) != -1) { // We found a line
 
-					Realpart_auxiliar = Realpart_auxiliar
-							+ Double.parseDouble(Rline.get(rdfIDline.indexOf(Paths.get(a).get(j)))) / appliedZbase; // Series
-																													// resistance
-																													// in
+					Realpart_auxiliar = Double.parseDouble(R_line.get(rdfID_line.indexOf(pastPaths.get(a).get(j))))
+							/ appliedZbase; // Series
+											// resistance
+											// in
 					// the branch j
 
-					Imaginarypart_auxiliar = Imaginarypart_auxiliar
-							+ Double.parseDouble(Xline.get(rdfIDline.indexOf(Paths.get(a).get(j)))) / appliedZbase;// Series
-																													// reactance
-																													// in
-																													// the
-																													// line
+					Imaginarypart_auxiliar = +Double.parseDouble(X_line.get(rdfID_line.indexOf(pastPaths.get(a).get(j))))
+							/ appliedZbase;// Series
+											// reactance
+											// in
+											// the
+											// line
 
 					if (j == 1 || j == 2) {
-						addmitance = Double.parseDouble(bshline.get(rdfIDline.indexOf(Paths.get(a).get(j)))) * 0.5
+						addmitance = Double.parseDouble(bsh_line.get(rdfID_line.indexOf(pastPaths.get(a).get(j)))) * 0.5
 								* appliedZbase;
-						Ymatrixim[row][row] = Ymatrixim[row][row] + addmitance;
+
 					}
 
-					Branch_info[a][2] = String.valueOf(Realpart_auxiliar);
-					Branch_info[a][3] = String.valueOf(Imaginarypart_auxiliar);
-					Branch_info[a][4] = String.valueOf(addmitance * 2);
+					BranchInfo[a][2] = String.valueOf(Realpart_auxiliar);
+					BranchInfo[a][3] = String.valueOf(Imaginarypart_auxiliar);
+					BranchInfo[a][4] = String.valueOf(addmitance * 2); // In the branch info we want to store the whole
+																		// line b.
 
 				}
 
-				if (rdfIDtransformer.indexOf(Paths.get(a).get(j)) != -1) { // We found a transformer
+				if (rdfID_transformer.indexOf(pastPaths.get(a).get(j)) != -1) { // We found a transformer
 
-					if (voltagelevelbasevoltagerdfID.get(counter2) == Containertransformer
-							.get(rdfIDtransformer.indexOf(Paths.get(a).get(j)))
-							&& (int) Double.parseDouble(
-									Rtransformer.get(rdfIDtransformer.indexOf(Paths.get(a).get(j)))) == 0) {
-						// We are going through the secondary side of the transformer, then we need to
-						// change the appplied Zbase
-						// to calculate the p.u. transformer impedance, since it is not zero as seen for
-						// the other side
-						location_new_baseimpedance = voltagelevelbasevoltagerdfID
-								.indexOf(Containertransformer.get(rdfIDtransformer.indexOf(Paths.get(a).get(j)) - 1));
-						appliedZbase = baseImpedance[location_new_baseimpedance];
-						Realpart_auxiliar = Realpart_auxiliar
-								+ Double.parseDouble(Rtransformer.get(rdfIDtransformer.indexOf(Paths.get(a).get(j))))
-										/ appliedZbase;
-						Imaginarypart_auxiliar = Imaginarypart_auxiliar
-								+ Double.parseDouble(Xtransformer.get(rdfIDtransformer.indexOf(Paths.get(a).get(j))))
-										/ appliedZbase;
-						Branch_info[a][2] = String.valueOf(Realpart_auxiliar);
-						Branch_info[a][3] = String.valueOf(Imaginarypart_auxiliar);
-					} else {
+					location_new_baseimpedance = voltagelevel_basevoltagerdfID
+							.indexOf(container_transformer.get(rdfID_transformer.indexOf(pastPaths.get(a).get(j))));
+					appliedZbase = baseImpedance[location_new_baseimpedance];
 
-						Realpart_auxiliar = Realpart_auxiliar
-								+ Double.parseDouble(Rtransformer.get(rdfIDtransformer.indexOf(Paths.get(a).get(j))))
-										/ appliedZbase; // Series resistance in
-						// the branch
+					Realpart_auxiliar = Double.parseDouble(
+							R_transformer.get(rdfID_transformer.indexOf(pastPaths.get(a).get(j)))) / appliedZbase; // Series
+																												// resistance
+																												// in
+					// the branch
 
-						Imaginarypart_auxiliar = Imaginarypart_auxiliar
-								+ Double.parseDouble(Xtransformer.get(rdfIDtransformer.indexOf(Paths.get(a).get(j))))
-										/ appliedZbase;// Series reactance in the
-						Branch_info[a][2] = String.valueOf(Realpart_auxiliar);
-						Branch_info[a][3] = String.valueOf(Imaginarypart_auxiliar);
-						location_new_baseimpedance = voltagelevelbasevoltagerdfID
-								.indexOf(Containertransformer.get(rdfIDtransformer.indexOf(Paths.get(a).get(j)) + 1));
-						appliedZbase = baseImpedance[location_new_baseimpedance];
-					}
+					Imaginarypart_auxiliar = Double.parseDouble(
+							X_transformer.get(rdfID_transformer.indexOf(pastPaths.get(a).get(j)))) / appliedZbase;// Series
+																											// reactance
+																											// in the
 
-					/*
-					 * if(j==1){ In case we add b and g to the transformer
-					 * Ymatrixim[row][row]=Ymatrixim[row][row]+Double.parseDouble(bshtransformer.get
-					 * (rdfIDtransformer.indexOf(Paths.get(a).get(j))));
-					 * Ymatrixre[row][row]=Ymatrixim[row][row]+Double.parseDouble(gtransformer.get(
-					 * rdfIDtransformer.indexOf(Paths.get(a).get(j)))); }
-					 */
+					BranchInfo[a][2] = String.valueOf(Realpart_auxiliar);
+					BranchInfo[a][3] = String.valueOf(Imaginarypart_auxiliar);
+					location_new_baseimpedance = voltagelevel_basevoltagerdfID
+							.indexOf(container_transformer.get(rdfID_transformer.indexOf(pastPaths.get(a).get(j)) + 1));
+					appliedZbase = baseImpedance[location_new_baseimpedance]; // we change the base impedance afterwards
 				}
 
-				if (j == Paths.get(a).size() - 1) { // End of the path
+				if (j == pastPaths.get(a).size() - 1) { // End of the path
 
 					counter = 0;
-					while (!Paths.get(a).get(j).equals(busbarrdfID.get(counter))) { // Let's find which bus we have at
+					while (!pastPaths.get(a).get(j).equals(busbar_rdfID.get(counter))) { // Let's find which bus we have at
 																					// the end
 						counter++;
 					}
 					column = counter;
-					Branch_info[a][1] = String.valueOf(counter + 1);
-					Ymatrixim[column][column] = Ymatrixim[column][column] + addmitance; // The admitance of the line
-																						// needs to be added to both bus
-																						// ends!
-				}
+					BranchInfo[a][1] = String.valueOf(counter + 1);
+					// The admitance of the line
+					// needs to be added to both bus
+				} // ends!
 
 			} // Now we know in which row of the matrixes we have to put in the elements
 
 			// We have to check if we have done a path among this two bus buses // lines in
 			// parallel
+			if (Ymatrix_re[busRow][column] != 0.0 && Ymatrix_im[busRow][column] != 0.0 && !BranchInfo[a][5].equals("0")) {// we
+																													// have
+																													// already
+																													// gone
+																													// through
+																													// this
+																													// path.
+																													// We
+																													// need
+																													// to
+																													// calculate
+																													// the
+																													// parallel
+				// equivalent
+				Ymatrix_re[busRow][column] = parallelre(Ymatrix_re[busRow][column], Ymatrix_im[busRow][column], Realpart_auxiliar,
+						Imaginarypart_auxiliar);
+				Ymatrix_im[busRow][column] = parallelim(Ymatrix_re[busRow][column], Ymatrix_im[busRow][column], Realpart_auxiliar,
+						Imaginarypart_auxiliar);
+				Ymatrix_re[column][busRow] = Ymatrix_re[busRow][column];
+				Ymatrix_im[column][busRow] = Ymatrix_im[busRow][column];
+				Ymatrix_im[column][column] = Ymatrix_im[column][column] + addmitance;
+				Ymatrix_im[busRow][busRow] = Ymatrix_im[busRow][busRow] + addmitance;
 
-			if (Ymatrixre[row][column] != 0.0 && Ymatrixim[row][column] != 0.0) {
-				Ymatrixre[row][column] = parallelre(Ymatrixre[row][column], Ymatrixim[row][column], Realpart_auxiliar,
-						Imaginarypart_auxiliar);
-				Ymatrixim[row][column] = parallelim(Ymatrixre[row][column], Ymatrixim[row][column], Realpart_auxiliar,
-						Imaginarypart_auxiliar);
-				Ymatrixre[column][row] = Ymatrixre[row][column];
-				Ymatrixim[column][row] = Ymatrixim[row][column];
-			} else {// we have already gone through this path. We need to calculate the parallel
-					// equivalent
-				Ymatrixre[row][column] = Realpart_auxiliar;
-				Ymatrixim[row][column] = Imaginarypart_auxiliar;
-				Ymatrixre[column][row] = Ymatrixre[row][column]; // We never repeat paths so have to add it like this
-																	// for the other path among the same buses
-				Ymatrixim[column][row] = Ymatrixim[row][column];
+			} else if (Ymatrix_re[busRow][column] == 0.0 && Ymatrix_im[busRow][column] == 0.0
+					&& !BranchInfo[a][5].equals("0")) {
+
+				Ymatrix_re[busRow][column] = Realpart_auxiliar;
+				Ymatrix_im[busRow][column] = Imaginarypart_auxiliar;
+				Ymatrix_re[column][busRow] = Ymatrix_re[busRow][column]; // We never repeat pastPaths so have to add it like this
+				// for the other path among the same buses
+				Ymatrix_im[column][busRow] = Ymatrix_im[busRow][column];
+				Ymatrix_im[column][column] = Ymatrix_im[column][column] + addmitance;
+				Ymatrix_im[busRow][busRow] = Ymatrix_im[busRow][busRow] + addmitance;
+			} else {
 			}
 
 		}
-		for (int i = 0; i < Ymatrixre.length; i++) {
-			for (int e = 0; e < Ymatrixre.length; e++) {
-				if (Ymatrixre[i][e] != 0.0 && e != i) {
-					Ymatrixre[i][i] = Ymatrixre[i][i] + divisionre(Ymatrixre[i][e], Ymatrixim[i][e]);
-					Ymatrixim[i][i] = Ymatrixim[i][i] + divisionim(Ymatrixre[i][e], Ymatrixim[i][e]);
+		for (int i = 0; i < Ymatrix_re.length; i++) {
+			for (int e = 0; e < Ymatrix_re.length; e++) {
+				if (Ymatrix_re[i][e] != 0.0 && e != i) {
+
+					auxiliar = Ymatrix_re[i][e];
+					Ymatrix_re[i][e] = -division_re(1.0, 0.0, Ymatrix_re[i][e], Ymatrix_im[i][e]); // In the Y matrix
+																								// elements connecting
+																								// the buses i e
+					Ymatrix_im[i][e] = -division_im(1.0, 0.0, auxiliar, Ymatrix_im[i][e]); // are put in the element ie of
+																							// the matrix as -1/Zie
+
+					Ymatrix_re[i][i] = Ymatrix_re[i][i] - (Ymatrix_re[i][e]); // We implement it in the end because before
+																			// we calculate the
+					Ymatrix_im[i][i] = Ymatrix_im[i][i] - (Ymatrix_im[i][e]); // parallel connections
 				}
 			}
 		}
 	}
+
+	
+	/*
+	 * Method - Add a base impedance to the voltage level matrix  
+	 * 
+	 * Description - Called as part of topology build. Is referenced through javaYbus and
+	 * the branch build methods. Use class variable.
+	 *
+	 */
 
 	
 	/*
