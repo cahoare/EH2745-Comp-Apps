@@ -165,7 +165,7 @@ public class Topology {
 
 			stmt = conn.createStatement();
 
-			String sql = "USE STUDENTS";
+			String sql = "USE "+DB_NAME;
 			stmt.executeUpdate(sql);
 
 
@@ -742,7 +742,7 @@ public class Topology {
 			    }
 		    	
 		    	else{
-		    			Ymatrix[i][j]=String.valueOf(Ymatrix_re[i][j])+"+"+String.valueOf(Ymatrix_im[i][j]+"j");
+		    			Ymatrix[i][j]=String.valueOf(Ymatrix_re[i][j])+" "+String.valueOf(Ymatrix_im[i][j]+"j");
 		    	}		    	
 		    
 	    }}

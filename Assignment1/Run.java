@@ -37,7 +37,7 @@ import javax.swing.filechooser.*;
 public class Run {
 
 	static String XmlFile = null;
-	static String [] dbSetup = { "com.mysql.cj.jdbc.Driver","jdbc:mysql://localhost:3306/", "root", "root", "STUDENTS"};
+	static String [] dbSetup = { "com.mysql.cj.jdbc.Driver","jdbc:mysql://localhost:3306/", "root", "root", "students"};
 	
 	// If the data collected is updated there are several variations of the index table used in the program that must be updated
 	// These are - here, in equip item (note the rdf resource split index!), the switch statement in equip data, and the index in topology 
