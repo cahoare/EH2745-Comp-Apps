@@ -9,17 +9,18 @@ import java.util.ArrayList;
 
 
 
+
 public class KmeansClustering {
 	
 	static ArrayList<Flower> flowerList = new ArrayList<Flower>();
-	static ArrayList<String> type = new ArrayList<String>();
+	static ArrayList<String> type = new ArrayList<String>(); // array of the types
 	
 	static ArrayList<String> type1 = new ArrayList<String>();
 	static ArrayList<String> type2 = new ArrayList<String>();
 	static ArrayList<String> type3 = new ArrayList<String>();
 	static ArrayList<String> type4 = new ArrayList<String>();
 	
-	static double [][] values = new double [150][4];
+	static double [][] values = new double [150][4]; // array of the values
 	static double [][] centroids = new double [4][4];
 	static double [][] cluster1 = new double [150][4];
 	static double [][] cluster2 = new double [150][4];
@@ -33,7 +34,7 @@ public class KmeansClustering {
 	   
 	public static void main(String[] args) {
 	   
-		String dataFile = "iris.csv";
+		String dataFile = "C:\\Users\\Callum\\eclipse-workspace\\EH2745\\Assignments\\Assignment2\\iris.csv";
 		
 		
 		
@@ -77,6 +78,9 @@ public class KmeansClustering {
 		 
 		try {
 		// use code from Java exercise IV to create internal database of iris flowers
+			// param - sepal length, sepal width, petal length and petal width
+			// type - setosa, versicolor or virginica.
+			
 			br = new BufferedReader(new FileReader(dataFile));
 			
 			while ((line = br.readLine()) != null) {
@@ -135,38 +139,62 @@ public class KmeansClustering {
 
 	public static void initialize() {
 		// TODO Auto-generated method stub
-		int x = values.length/6;
+		int x = values.length/6; //divide values up into 6
+	
 		for(int i=0;i<4;i++)
 		{
-			centroids[0][i]=values[x][i];
+			centroids[0][i]=values[x][i]; //create the centroids array - initialise into 6 for some reason?? Random?
 			centroids[1][i]=values[2*x][i];
 			centroids[2][i]=values[4*x][i];
 			centroids[3][i]=values[6*x-1][i];
 					
 		}
+		
 		index1=0;
 	  	index2=0;
 	  	index3=0;
 	  	index4=0;
+	  	
+	  	double dist1a;
+		double dist2a;
+		double dist3a;
+		double dist4a;
+	  	
+	  	
+	  	// we want to allocate to the clusters with lowest distance??
 		for(int i=0; i<150; i++)
 		 {
+			dist1 = 0.0;
+			dist2 = 0.0;
+			dist3 = 0.0;
+			dist4 = 0.0;
+			
 		  	for(int j=0; j<4; j++)
 			{
 				dist1 += ((centroids[0][j]-values[i][j])*(centroids[0][j]-values[i][j]));
-				
+		//		dist1a +=((centroids[0][j]-values[i][j])*(centroids[0][j]-values[i][j]));
 				dist2 += ((centroids[1][j]-values[i][j])*(centroids[1][j]-values[i][j]));
-				
+		//		dist2a += ((centroids[1][j]-values[i][j])*(centroids[1][j]-values[i][j]));
 				dist3 += ((centroids[2][j]-values[i][j])*(centroids[2][j]-values[i][j]));
-				
+		//		dist3a+= ((centroids[2][j]-values[i][j])*(centroids[2][j]-values[i][j]));
 				dist4 += ((centroids[3][j]-values[i][j])*(centroids[3][j]-values[i][j]));
+		//		dist4a += ((centroids[3][j]-values[i][j])*(centroids[3][j]-values[i][j]));
 			
+		//		System.out.println(i +" : "+ dist1 +","+dist2 +","+dist3+","+dist4);
+		//		System.out.println(i +" : "+dist1a +","+dist2a +","+dist3a+","+dist4a);
 				
 			}
+		 // 	dist1a = Math.sqrt(dist1a);
 		  	dist1=Math.sqrt(dist1);	
 			dist2=Math.sqrt(dist2);	
 			dist3=Math.sqrt(dist3);	
 			dist4=Math.sqrt(dist4);	
+		//	dist2a=Math.sqrt(dist2a);	
+		//	dist3a=Math.sqrt(dist3a);	
+		//	dist4a=Math.sqrt(dist4a);	
 			
+			System.out.println(i +" : "+ dist1 +","+dist2 +","+dist3+","+dist4);
+		//	System.out.println(i +" : "+dist1a +","+dist2a +","+dist3a+","+dist4a);
 			
 			if(dist1 < dist2)
 			{
@@ -274,8 +302,9 @@ public class KmeansClustering {
 			for(int i=0; i<index1; i++)
 			{
 				new_centroids[0][j] += (cluster1[i][j]/(index1));  
-				centroids[0][j]=new_centroids[0][j];
+				
 			}
+			centroids[0][j]=new_centroids[0][j];
 		}
 		
 		for(int j=0; j<4; j++)

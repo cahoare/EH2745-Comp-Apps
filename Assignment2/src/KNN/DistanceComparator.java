@@ -3,9 +3,6 @@ package KNN;
 import java.util.Comparator;
 
 
-
-
-
 public class DistanceComparator implements Comparator<Result> {
 
 	@Override

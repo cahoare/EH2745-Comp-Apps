@@ -1,475 +1,282 @@
 package Project;
 
-
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+
+// Notes for improvement...
+// Add in initialisation randomisation... ??? Easy
+
 public class Kmeans {
-	
-	
-		
-	// ESCENARIOS INFORMATION	
-	private ArrayList<Escenario> EscenariosData = new ArrayList<Escenario>();
-	
-	private ArrayList<Integer> type1 = new ArrayList<Integer>();
-	private ArrayList<Integer> type2 = new ArrayList<Integer>();
-	private ArrayList<Integer> type3 = new ArrayList<Integer>();
-	private ArrayList<Integer> type4 = new ArrayList<Integer>();
-	
 
+	private static ArrayList<Integer> times; //timestamps
+	private static ArrayList<double[]> values; //actual data
+	private final double error = 0.01; 
 	
-	private double [][] values; // rows: number of escenarios, columns: number of variables 2
-	private double [][] centroids; // Number of rows is the number of klusters
-	private double [][] cluster1; 
-	private double [][] cluster2;
-	private double [][] cluster3;
-	private double [][] cluster4;
-	private double dist1,dist2, dist3, dist4;
-	private int index1,index2,index3,index4;
-	 
+	// TABLE information
+	private static String[] tableFormat;
 
-	
-	public Kmeans(ArrayList<Escenario> List) {
-		
-		EscenariosData = (ArrayList<Escenario>)List.clone();
+	public Kmeans(Identification data, String[] tableFormat) {
+		values = data.getDataTable();
+		times = data.getTimeStamps();
+		Kmeans.tableFormat = tableFormat;
+	}
 
-		int g = 0;
-		while(g<EscenariosData.size()){ 	
-	    System.out.println(EscenariosData.get(g).getName()+" "+EscenariosData.get(g).getVoltage()+" "+EscenariosData.get(g).getAngle()+" "+EscenariosData.get(g).getTimeestamp());
-	    g++;    }
-	}
+	/*
+	 * Method called to cluster the values with different number of clusters and different initialisation
+	 * Args: the number of clusters desired and a random variable 
+	 * Returns: the clustered data
+	 */
+	public ArrayList<ArrayList<double[]>> clusterData(int numClusters, int rand) {
+
+		// create the number of clusters depending on passed input
+		// hold this in an arraylist
+		// try for four clusters first
+		ArrayList<double[]> centroids = new ArrayList<double[]>(); 
+		ArrayList <double[]> newCentroids = new ArrayList<double[]>(); 
+		ArrayList<ArrayList<double[]>> clusters = new ArrayList<ArrayList<double[]>>();
 		
-	public void Clustering () {
-		
-		
-		
-		values=new double[EscenariosData.size()][2]; 
-		centroids=new double[4][2]; 
-		cluster1=new double[EscenariosData.size()][2];
-		cluster2=new double[EscenariosData.size()][2];
-		cluster3=new double[EscenariosData.size()][2];
-		cluster4=new double[EscenariosData.size()][2];
-		int g=0;
-		while(g<EscenariosData.size()){ 
-			values[g][0]=EscenariosData.get(g).getVoltage();
-			values[g][1]=EscenariosData.get(g).getAngle();
-			
-		    g++;    }
-		
-		
-		initialize();
-		cal_centroids();
-		K_clusters();
-		System.out.println(type1.size());
-		System.out.println(type2.size());
-		System.out.println(type3.size());
-		System.out.println(type4.size());
-	}		
-		
-    public void initialize(){
-		// TODO Auto-generated method stub
-		int x = values.length/6;
+		// initialise the variables
+		// add the number of clusters
+		// set the initial centroids as the value of individual states in the data
+		for (int i = 0; i < numClusters; i++) {
+			clusters.add(new ArrayList<double[]>());
+			// randomise the initial clusters using rand variable. Assumes some randomisation in data
+			newCentroids.add(values.get((rand+i*values.size()/numClusters)%values.size()));
+		}
 	
-		for(int i=0;i<2;i++)
-		{
-			centroids[0][i]=values[x][i];
-			centroids[1][i]=values[2*x][i];
-			centroids[2][i]=values[4*x][i];
-			centroids[3][i]=values[6*x-1][i];
-					
+		// while the centroids are still going to move more than a min distance
+		// assign the centroids the new centroid location
+		// sort the values into new cluster on the basis of these centroid locations
+		// check whether the distance criteria is met and if not repeat
+		boolean distGreater = true;
+		while (distGreater) {			
+			centroids = newCentroids;
+			clusters = sortClusters(centroids, clusters);		
+			newCentroids = calCentroid(clusters);
+			distGreater = checkDist(centroids, newCentroids);
 		}
 		
-		index1=0;
-	  	index2=0;
-	  	index3=0;
-	  	index4=0;
-		for(int i=0; i<values.length; i++)
-		 {
-			dist1=0;
-			dist2=0;
-			dist3=0;
-			dist4=0;
-		  	for(int j=0; j<2; j++)
-			{
-				dist1 += ((centroids[0][j]-values[i][j])*(centroids[0][j]-values[i][j]));
-				
-				dist2 += ((centroids[1][j]-values[i][j])*(centroids[1][j]-values[i][j]));
-				
-				dist3 += ((centroids[2][j]-values[i][j])*(centroids[2][j]-values[i][j]));
-				
-				dist4 += ((centroids[3][j]-values[i][j])*(centroids[3][j]-values[i][j]));
-			
-				
-			}
-		  	dist1=Math.sqrt(dist1);	
-			dist2=Math.sqrt(dist2);	
-			dist3=Math.sqrt(dist3);	
-			dist4=Math.sqrt(dist4);	
-			
-			
-			if(dist1 < dist2)
-			{
-				if(dist1 < dist3)
-				{
-					if(dist1 < dist4)
-					{
-						for(int j=0; j<2; j++)
-						{
-								cluster1[index1][j]=values[i][j];
-								
-						}
-						index1++;
-						
-					}
-					else
-					{
-						for(int j=0; j<2; j++)
-						{
-					 		cluster4[index4][j]=values[i][j];
-							
-						}
-						index4++;
-					}
-				}
-				
-				else if(dist3 < dist4)
-				{
-					for(int j=0; j<2; j++)
-					{
-				 		cluster3[index3][j]=values[i][j];
-				 		
-					}
-					index3++;
-				 	
-				}
-				else
-				{
-					for(int j=0; j<2; j++)
-					{
-				 		cluster4[index4][j]=values[i][j];
-				 		
-					}
-					index4++;
-				 	
-				}
-			}
-		  	else if(dist2 < dist3)
-			{
-				if(dist2 < dist4)
-				{
-					for(int j=0; j<2; j++)
-					{
-							cluster2[index2][j]=values[i][j];
-					}
-					index2++;
-					
-					
-					
-				}
-				else
-				{
-					for(int j=0; j<2; j++)
-					{
-				 		cluster4[index4][j]=values[i][j];
-				 		
-					}
-					index4++;
-				 	
-				}
-			}
-			
-			else if(dist3 < dist4)
-			{
-				for(int j=0; j<2; j++)
-				{
-			 		cluster3[index3][j]=values[i][j];
-			 		
-				}
-				index3++;
-		 		
-			}
-			else
-			{
-				for(int j=0; j<2; j++)
-				{
-			 		cluster4[index4][j]=values[i][j];
-			 		
-				}
-				index4++;
-			 	
-			}
-			
-		 }
+		return clusters;
 	}
-    public void cal_centroids() {
-		// TODO Auto-generated method stub
-		double [][] new_centroids = {{0,0,0,0},
-									 {0,0,0,0},
-									 {0,0,0,0},
-									 {0,0,0,0}
-									 };
-		for(int j=0; j<2; j++)
-		{
-			for(int i=0; i<index1; i++)
-			{
-				new_centroids[0][j] += (cluster1[i][j]/(index1));  
-				centroids[0][j]=new_centroids[0][j];
+
+	/*
+	 * Checks the distance between the centroids against a specified error
+	 * Args: the two centroid locations
+	 * Returns: boolean true if distance is greater than the error
+	 */
+	private boolean checkDist(ArrayList<double[]> oldCentroids, ArrayList<double[]> newCentroids) {
+		
+		double [] totalDist = new double [oldCentroids.size()];
+		boolean distGreater = false;
+		
+		// for each cluster
+		for (int i = 0; i<oldCentroids.size(); i++) {
+			// check the difference in the old centroid vs the new
+			// example solution normalises this?? dont believe this is correct
+			for (int j = 0; j < tableFormat.length; j++) {
+				totalDist[i] += Math.abs(oldCentroids.get(i)[j] - newCentroids.get(i)[j]);
 			}
+			if (totalDist[i] > error) 
+				distGreater =true;
 		}
 		
-		for(int j=0; j<2; j++)
-		{
-			for(int i=0; i<index2; i++)
-			{
-				new_centroids[1][j] += (cluster2[i][j]/(index2));  
-				centroids[1][j]=new_centroids[1][j];
-		
-			}
-		}
-		
-		for(int j=0; j<2; j++)
-		{
-			for(int i=0; i<index3; i++)
-			{
-				new_centroids[2][j] += (cluster3[i][j]/(index3));  
-				centroids[2][j]=new_centroids[2][j];
-			}
-		}
-		
-		for(int j=0; j<2; j++)
-		{
-			for(int i=0; i<index4; i++)
-			{
-				new_centroids[3][j] += (cluster4[i][j]/(index4));  
-				centroids[3][j]=new_centroids[3][j];
-			}
-		} 	
-	}
-    public void K_clusters() {
-		// TODO Auto-generated method stub
-		double [][] temp_values = new double[values.length][2];
-		double [][] old_centroids = new double [4][2];
-		double dif1=0,dif2=0,dif3=0,dif4=0;
-		double tol=0.001;
-		while(true)
-	{
-		type1.clear();
-		type2.clear();
-		type3.clear();
-		type4.clear();
-		
-			
-			for(int i=0; i<index1; i++)
-		 {
-			for(int j=0; j<2; j++)
-		 	{
-				temp_values[i][j]= cluster1[i][j];
-					  		
-			}
-		 }
-		for(int i=0; i<index2; i++)
-		 {
-			for(int j=0; j<2; j++)
-		 	{
-				temp_values[i+index1][j]= cluster2[i][j];
-					  		
-			}
-		 }
-		for(int i=0; i<index3; i++)
-		 {
-			for(int j=0; j<2; j++)
-		 	{
-				temp_values[i+index1+index2][j]= cluster3[i][j];
-					  		
-			}
-		 }
-		for(int i=0; i<index4; i++)
-		 {
-			for(int j=0; j<2; j++)
-		 	{
-				temp_values[i+index1+index2+index3][j]= cluster4[i][j];
-					  		
-			}
-		 }
-		
-		
-		index1=0;
-	  	index2=0;
-	  	index3=0;
-	  	index4=0;
-	
-	  	for(int i=0; i<values.length; i++)
-		 {
-	  		dist1=0;
-	  		dist2=0;
-	  		dist3=0;
-	  		dist4=0;
-	  		
-	  		
-		  	for(int j=0; j<2; j++)
-			{
-		  		dist1 += ((centroids[0][j]-values[i][j])*(centroids[0][j]-values[i][j]));
-				
-				dist2 += ((centroids[1][j]-values[i][j])*(centroids[1][j]-values[i][j]));
-				
-				dist3 += ((centroids[2][j]-values[i][j])*(centroids[2][j]-values[i][j]));
-				
-				dist4 += ((centroids[3][j]-values[i][j])*(centroids[3][j]-values[i][j]));
-			
-				
-				
-			}
-		  	dist1=Math.sqrt(dist1);	
-			dist2=Math.sqrt(dist2);	
-			dist3=Math.sqrt(dist3);	
-			dist4=Math.sqrt(dist4);	
-		
-			if(dist1 < dist2)
-			{
-				if(dist1 < dist3)
-				{
-					if(dist1 < dist4)
-					{
-						for(int j=0; j<2; j++)
-						{
-								cluster1[index1][j]=values[i][j];
-																
-						}
-						index1++;
-						type1.add(i);
-						
-					}
-					else
-					{
-						for(int j=0; j<2; j++)
-						{
-					 		cluster4[index4][j]=values[i][j];
-					 		
-						}
-						index4++;
-						type4.add(i);
-						
-					}
-				}
-				
-				else if(dist3 < dist4)
-				{
-					for(int j=0; j<2; j++)
-					{
-				 		cluster3[index3][j]=values[i][j];
-				 		
-					}
-					index3++;
-					type3.add(i);
-					
-				}
-				else
-				{
-					for(int j=0; j<2; j++)
-					{
-				 		cluster4[index4][j]=values[i][j];
-				 		
-					}
-					index4++;
-					type4.add(i);
-					
-				}
-			}
-		  	else if(dist2 < dist3)
-			{
-				if(dist2 < dist4)
-				{
-					for(int j=0; j<2; j++)
-					{
-							cluster2[index2][j]=values[i][j];
-							
-					}
-					index2++;
-					type2.add(i);
-					
-					
-					
-				}
-				else
-				{
-					for(int j=0; j<2; j++)
-					{
-				 		cluster4[index4][j]=values[i][j];
-				 		
-					}
-					index4++;
-					type4.add(i);
-					
-				}
-			}
-			
-			else if(dist3 < dist4)
-			{
-				for(int j=0; j<2; j++)
-				{
-			 		cluster3[index3][j]=values[i][j];
-			 		
-				}
-				index3++;
-				type3.add(i);
-				
-			}
-			else
-			{
-				for(int j=0; j<2; j++)
-				{
-			 		cluster4[index4][j]=values[i][j];
-			 		
-				}
-				index4++;
-				type4.add(i);
-				
-			}
-			
-		 }
-		
-		for(int j=0; j<2; j++)
-		{
-				old_centroids[0][j] = centroids[0][j];
-				old_centroids[1][j] = centroids[1][j];
-				old_centroids[2][j] = centroids[2][j];
-				old_centroids[3][j] = centroids[3][j];
-				
-		}
-		
-		dif1=0;
-		dif2=0;
-		dif3=0;
-		dif4=0;
-		cal_centroids();
-		
-		for(int j=0; j<2; j++)
-		{
-				dif1+=(Math.sqrt(((old_centroids[0][j] - centroids[0][j])*(old_centroids[0][j] - centroids[0][j]))))/index1;
-				dif2+=(Math.sqrt(((old_centroids[1][j] - centroids[1][j])*(old_centroids[1][j] - centroids[1][j]))))/index2;
-				dif3+=(Math.sqrt(((old_centroids[2][j] - centroids[2][j])*(old_centroids[2][j] - centroids[2][j]))))/index3;
-				dif4+=(Math.sqrt(((old_centroids[3][j] - centroids[3][j])*(old_centroids[3][j] - centroids[3][j]))))/index4;
-				
-		}
-		
-		
-		
-		if(dif1<=tol&&dif2<=tol&&dif3<=tol&&dif4<=tol)
-		{
-			break;
-		}
-		
-		
+		return distGreater;
 	}
 	
+	/*
+	 * Calculates the centroid locations
+	 * Args: the clustered data
+	 * Returns: the centroid locations of the clusters
+	 */
+	private ArrayList<double[]> calCentroid(ArrayList<ArrayList<double[]>> clusters) {
+		
+		ArrayList <double[]> newCentroids = new ArrayList<double[]>();
+
+		// for all the clusters
+		for (int i=0; i<clusters.size(); i++) {
+			// this is variable for new centroid for each cluster
+			double [] centroidHold = new double[tableFormat.length];
+			// for each entry in that cluster
+			for (int j = 0; j<clusters.get(i).size();j++) {
+				// calculate the average value of each table element for that cluster
+				for (int x = 0; x<tableFormat.length; x++) {
+					centroidHold[x] += clusters.get(i).get(j)[x]/clusters.get(i).size();
+				}
+			}
+			// this is the new centroid for that cluster
+			newCentroids.add(centroidHold);
+		}	
+		return newCentroids;		
+	}
+
+	/*
+	 * Sorts the data by best fitting cluster
+	 * Args: existing clustered data and centroid locations
+	 * Returns: the new data clusters
+	 */
+	private ArrayList<ArrayList<double[]>> sortClusters(ArrayList <double[]> centroids, ArrayList<ArrayList<double[]>> clusters) {
+		
+		// Clear the clusters. (Possibly may be more optimal way of updating? Investigate...)
+		for (int i = 0; i < clusters.size(); i++) {
+			clusters.get(i).clear();
+		}
+		
+		// for each time state 
+		for (int i = 0; i < values.size(); i++) {
+			
+			// array for determining how far a certain state is from each cluster (first index for cluster 1, etc.). Re-init with each new value
+			double[] clusterDist = new double[centroids.size()];
+			
+			// for each element in the time state
+			for (int j = 0; j< tableFormat.length; j++) {
+				// calculate the distance between the corresponding element in each cluster
+				for (int x = 0; x < clusterDist.length; x++) {
+					clusterDist[x] += Math.pow((values.get(i)[j]-centroids.get(x)[j]),2);
+				}
+			}
+			
+			// take the square root to find the euclidean distance
+			for (int x = 0; x < clusterDist.length; x++) {
+				clusterDist[x] = Math.sqrt(clusterDist[x]);
+			}
+
+			// find the minimum distance cluster and add to that cluster's arraylist
+			int minDistIndex = 0;
+			for (int x = 1; x < clusterDist.length; x++) {
+				if (clusterDist[x] < clusterDist[minDistIndex])
+					minDistIndex = x;
+			}
+			clusters.get(minDistIndex).add(values.get(i));
+		}
+	
+		return clusters;
+	}
+	
+	/*
+	 * Finds the overall cost value of the clusters
+	 * Args: the clustered data
+	 * Returns: the cost value
+	 */
+	public double calCost(ArrayList<ArrayList<double[]>> clusters) {
+		
+		ArrayList<double[]> centroids = calCentroid(clusters);
+		double totCost = 0;
+		
+		// for each cluster
+		for (int i = 0; i<clusters.size(); i++){
+			
+			// for each value in the cluster
+			for(int j = 0; j<clusters.get(i).size(); j++) {
+				
+				double distHold = 0;
+				
+				//for each element in that value
+				for(int x = 0; x< tableFormat.length; x++) {
+					//calculate the distance between the element and the centroid element
+					distHold = Math.pow((clusters.get(i).get(j)[x]-centroids.get(i)[x]),2);
+				}
+				totCost += Math.sqrt(distHold);
+			}
+		}	
+		return totCost;
+	}
+	
+	/* ONLY SET UP FOR 4 CLUSTERS
+	 * Classify the states from the centroids
+	 * Args: the clustered data
+	 * Returns: a string array of each state
+	 */
+	public int[] clustClassify(ArrayList<ArrayList<double[]>> clusters, int [][] lineData, int[] busData) {
+		
+		ArrayList<double[]> centroids = calCentroid(clusters);
+		
+		// return array - which cluster to which state. {gen, line, peak, low}
+		int [] states = new int [clusters.size()];
+		
+		// Based on voltage angle differences
+		// Basic rules are as follows:
+		// If the delta on a generator bus is 0 then the generator must be off
+		// If the total delta (in and out) at a branch bus then a line must be tripped
+		// The two remaining states are high load and low load, which can be found summing the delta at the load buses
+		
+		// Static references - could fix. Gen bus data is in first three line data rows
+		// Check gen data
+		try {
+		boolean found = false;
+		for (int i = 0; i < centroids.size(); i++) {
+			for (int j = 0; j<3; j++) {
+				double genPF = centroids.get(i)[2*lineData[j][0]-1] - centroids.get(i)[2*lineData[j][1]-1];
+				if(genPF<0.1) {
+					found = true;
+					states[0] = i;
+					break;
+				}
+			}
+
+		}
+		// if for some reason a bus isnt found throw exception
+		if (!found) 
+			throw new EntryMissingException();
+
+		// Check line data
+		found = false;
+		for (int i = 0; i < clusters.size(); i++) {
+			// Calc Bus 4 = (1-4) - (4-5) - (4-9)
+			double pb4 =  (centroids.get(i)[2*1-1] - centroids.get(i)[2*4-1]) +
+					(centroids.get(i)[2*5-1] - centroids.get(i)[2*4-1]) +
+					(centroids.get(i)[2*9-1] - centroids.get(i)[2*4-1]);
+			// Calc Bus 6 = (3-6) + (5-6) - (6-7)
+			double pb6 =  (centroids.get(i)[2*3-1] - centroids.get(i)[2*6-1]) +
+					(centroids.get(i)[2*5-1] - centroids.get(i)[2*6-1]) -
+					(centroids.get(i)[2*6-1] - centroids.get(i)[2*7-1]);
+			// Calc Bus 8 = (2-8) + (7-8) - (8-9)
+			double pb8 =  (centroids.get(i)[2*2-1] - centroids.get(i)[2*8-1]) +
+					(centroids.get(i)[2*7-1] - centroids.get(i)[2*8-1]) -
+					(centroids.get(i)[2*8-1] - centroids.get(i)[2*9-1]);
+			System.out.println("Lines"+ (pb4+pb6+pb8));
+			if(Math.abs(pb4+pb6+pb8) > 20) {
+				found = true;
+				states[1] = i;
+				break;
+			}
+		}
+		// if for some reason a line isnt found throw exception
+		if (!found) 
+			throw new EntryMissingException();
+		
+		// For the two remaining clusters calculate the one with highest load
+		int [] remainClust = {1,1,1,1};
+		remainClust[states[0]] = 0; 
+		remainClust[states[1]] = 0;
+		
+		int index = 0;
+		double [] loadTot = new double [2];
+		for (int i = 0; i < clusters.size(); i++) {
+			if (remainClust[i]==1) {
+				double load1 = (centroids.get(i)[2*4-1] - centroids.get(i)[2*5-1]) +
+						(centroids.get(i)[2*5-1] - centroids.get(i)[2*6-1]);
+				double load2 = (centroids.get(i)[2*6-1] - centroids.get(i)[2*7-1]) +
+						(centroids.get(i)[2*8-1] - centroids.get(i)[2*7-1]);
+				double load3 = (centroids.get(i)[2*4-1] - centroids.get(i)[2*9-1]) +
+						(centroids.get(i)[2*8-1] - centroids.get(i)[2*9-1]);
+				loadTot[index] = load1+load2+load3;
+				System.out.println(loadTot[index]);
+				states[2+index] = i;
+				index++;
+			}
+		}
+		if (loadTot[1]>loadTot[0]) {
+			int hold = states[2];
+			states[2] = states[3];
+			states[3] = hold;
+		}
+		
+		return states;
+		}catch(EntryMissingException e) {
+			System.out.println("Classify failed");
+			e.printStackTrace();
+			return null;
+		}
 	}
 }
-	
-	
-

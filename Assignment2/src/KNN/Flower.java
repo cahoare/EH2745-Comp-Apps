@@ -1,5 +1,4 @@
 package KNN;
-
 public class Flower {
 
 	double[] param;
