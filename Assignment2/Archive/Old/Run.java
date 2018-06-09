@@ -1,4 +1,4 @@
-import java.util.ArrayList;
+package Project;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,14 +43,14 @@ public class Run {
 	static int [] busType = {0, 0, 0, 2, 1,2, 1,2,1};   
 	static int [] [] lineData = {{1,4}, {2,8}, {3,6}, {4,5}, {4,9}, {5,6}, {6,7}, {7,8}, {8,9}};
 
-	static String process;
+	
 	
 	public static void main(String[] args) {
 
 		// Potentially could initialise table format by searching for distinct data entry points - assuming voltage angle and magnitude for 9 buses 
 		
-		 process= "kmeans";
-		Identification data = new Identification(dbSetup, tableFormat, process); // Define a new data importer object
+		
+		Identification data = new Identification(dbSetup, tableFormat); // Define a new data importer object
 		Kmeans clusterer = new Kmeans(data, tableFormat); // Create new clusterer object
 		
 		// Generate random number for Kmeans
@@ -92,24 +92,6 @@ public class Run {
 		System.out.println("Gen Maint = Cluster " + states[0] + "\r\nLine down = Cluster " + states[1] + "\r\nHigh load = Cluster " + states[2] + "\r\nLow Load = Cluster " + states[3] );
 		
 		outputFileBuild(clusters);
-		int k=0;
-		kNeighbours findk = new kNeighbours(clusters,k);
-		k=findk.optimumk();
-		System.out.println("Optimum number of k:" +k);
-		process= "kNN";
-		Identification dataTesting = new Identification(dbSetup, tableFormat,process); // Define a new data importer object
-		kNN classification = new kNN(dataTesting, tableFormat, k , clusters, states);
-		
-		
-		System.out.println("After kNN classification:");
-		for (int x = 0; x < clusters.size(); x++) {
-			
-			System.out.println("Cluster " + x + " - Size " + clusters.get(x).size());
-			
-		}
-	
-		
-		
 	}
 	
 	/*
@@ -122,8 +104,8 @@ public class Run {
 	 */
 	public static void outputFileBuild(ArrayList<ArrayList<double []>> clusters) {
 		
-		 try {
-            File outFile = new File("C:\\Users\\Media\\Documents\\outputFile.csv"); // Choose save directory
+        try {
+            File outFile = new File("C:\\Users\\Callum\\eclipse-workspace\\EH2745\\Assignments\\Assignment2\\clusterOut.csv"); // Choose save directory
             FileOutputStream fs = new FileOutputStream(outFile);
             OutputStreamWriter osw = new OutputStreamWriter(fs);    
             Writer w = new BufferedWriter(osw);
@@ -151,7 +133,6 @@ public class Run {
 			w.close();
 			
         } catch (IOException e) {
-        	e.printStackTrace();
         	System.err.println("Problem writing the file");
         }
 		

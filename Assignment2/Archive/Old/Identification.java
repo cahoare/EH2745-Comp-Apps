@@ -1,3 +1,4 @@
+package Project;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -22,7 +23,6 @@ public class Identification {
 
 	// TABLE information
 	private static String[] tableFormat;
-	private static String process;
 
 	// Set up the variables to be stored
 	// state is the hold for each time stamp, allStates is the table for all time, timeStamps is a separate int array to store the times
@@ -31,14 +31,14 @@ public class Identification {
 	
 //	public ArrayList<Escenario> EscenariosData = new ArrayList<Escenario>();
 
-	public Identification(String[] dbSetup, String[] tableFormat,String process) {
+	public Identification(String[] dbSetup, String[] tableFormat) {
 
 		JDBC_DRIVER = dbSetup[0];
 		DB_URL = dbSetup[1];
 		USER = dbSetup[2];
 		PASS = dbSetup[3];
 		DB_NAME = dbSetup[4];
-		Identification.process= process;
+
 		Identification.tableFormat = tableFormat;
 
 		importMeasure();
@@ -55,6 +55,7 @@ public class Identification {
 			Class.forName(JDBC_DRIVER);
 
 			// Open a connection
+			System.out.println("Connecting to database...");
 			conn = DriverManager.getConnection(
 					DB_URL + DB_NAME + "?user=" + USER + "&password=" + PASS + "&autoReconnect=true&useSSL=false");
 
@@ -63,11 +64,7 @@ public class Identification {
 			stmt.executeUpdate(sql);
 
 			// Find number of entries in table
-			if( process=="kmeans"){
-			sql = "Select count(*) From measurements";}
-			else{
-				sql = "Select count(*) From analog_values";
-			}
+			sql = "Select count(*) From measurements";
 			rs = stmt.executeQuery(sql);
 			int entriesTot = 0;
 			while (rs.next()) {
