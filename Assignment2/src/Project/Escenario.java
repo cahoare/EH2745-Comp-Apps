@@ -1,3 +1,4 @@
+package Project;
 
 public class Escenario {
 	// Define the variable that define the structure
