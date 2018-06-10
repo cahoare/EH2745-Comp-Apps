@@ -36,6 +36,8 @@ import javax.swing.filechooser.*;
 
 public class Run {
 
+	
+	// Database entry and format
 	static String[] dbSetup = { "com.mysql.cj.jdbc.Driver", "jdbc:mysql://localhost:3306/", "root", "root",
 			"SUBTABLES" };
 	static String[] tableFormat = { "CLAR_VOLT", "CLAR_ANG", "AMHE_VOLT", "AMHE_ANG", "WINL_VOLT", "WINL_ANG",
@@ -44,30 +46,34 @@ public class Run {
 	// Bus Types: 0 - Gen, 1 - Load, 2 - Branch 
 	static int [] busType = {0, 0, 0, 2, 1,2, 1,2,1};   
 	static int [] [] lineData = {{1,4}, {2,8}, {3,6}, {4,5}, {4,9}, {5,6}, {6,7}, {7,8}, {8,9}};
-
-	static String process;
+	static String [] stateNames = { "Gen Disconnected", "Line Disconnected", "Peak Load", "Low Load"};
 	
 	public static void main(String[] args) {
 
-		// Potentially could initialise table format by searching for distinct data entry points - assuming voltage angle and magnitude for 9 buses 
-		
-		 process= "kmeans";
+		int startKCluster = 3; 
+		int endKCluster =10;
+		String process= "kmeans";
 		Identification data = new Identification(dbSetup, tableFormat, process); // Define a new data importer object
 		Kmeans clusterer = new Kmeans(data, tableFormat); // Create new clusterer object
 		
 		// Generate random number for Kmeans
 		int rand = ThreadLocalRandom.current().nextInt(0, data.getDataTable().size() + 1);
 		// Find an initial cluster
-		ArrayList<ArrayList<double []>> clusters = clusterer.clusterData(2, rand);
+		ArrayList<ArrayList<double []>> clusters = new ArrayList<ArrayList<double[]>> ();
 		// Find cost of that cluster
-		double clustCost = clusterer.calCost(clusters);
-		
+		double clustCost = 100000;		
 		// Define a new cluster
 		ArrayList<ArrayList<double []>> newClusters;
+		// Define a hold for each size and cost for each size
+		ArrayList <ArrayList<ArrayList<double []>>> allClusters = new ArrayList <ArrayList<ArrayList<double []>>> ();
+		ArrayList <Double> allClustCosts = new ArrayList <Double> ();
 		
-		for(int i = 4; i < 5; i++) {	
-			// complete with 10 different random variables
-			for (int j = 0; j < 10; j++) {
+		
+		// For different cluster sizes 
+		for(int i = startKCluster; i <= endKCluster; i++) {
+			clustCost = 100000;		
+			// For each cluser size initialise with 10 different random variables
+			for (int j = 0; j < 20; j++) {
 				rand = ThreadLocalRandom.current().nextInt(0, data.getDataTable().size() + 1);
 				newClusters = clusterer.clusterData(i, rand);
 				double newClustCost = clusterer.calCost(newClusters);
@@ -77,23 +83,62 @@ public class Run {
 					clustCost = newClustCost;
 				}
 				// print each cluster
-				for (int x = 0; x < clusters.size(); x++) {
+			///	for (int x = 0; x < clusters.size(); x++) {
 					// for each value in the cluster
-					System.out.println("Cluster " + x + " - Size " + clusters.get(x).size());
+				//	System.out.println("Cluster " + x + " - Size " + clusters.get(x).size());
 					// for(int j = 0; j<clusters.get(x).size(); j++) {
 					// System.out.println("Cluster " + x + " - Element " + j + ": " +
 					// Arrays.toString(clusters.get(x).get(j)));
 					// }
-				}
+			//	}
 				System.out.println("Cluster size " + i + " - Cost " + clustCost);
 			}
 			
+			// save the best cluster of each size and the cluster cost
+			allClusters.add(clusters);
+			allClustCosts.add(clustCost);	
 		}
-		int [] states = clusterer.clustClassify(clusters, lineData, busType);
 		
-		System.out.println("Gen Maint = Cluster " + states[0] + "\r\nLine down = Cluster " + states[1] + "\r\nHigh load = Cluster " + states[2] + "\r\nLow Load = Cluster " + states[3] );
+		// Select best cluster
+		int indElbowK = 0;
+		double prevCost = 10000;
+		try {
+			while (allClustCosts.get(indElbowK)<prevCost*0.5){ 
+				prevCost = allClustCosts.get(indElbowK);
+				indElbowK ++; 
+			}
+		} catch (IndexOutOfBoundsException elbowFindError) {
+			// Handle error for a missing db
+			elbowFindError.printStackTrace();
+			System.out.println("Couldn't find elbow");
+		}
+		clusters = allClusters.get(indElbowK-1);
+		System.out.println("Optimal number of clusters: " + Integer.toString(indElbowK+startKCluster));
+		
+		
+		// Print Centroids
+		String printCentroids = "";
+		ArrayList <double []> centroids = clusterer.calCentroid(clusters);
+		for (int i =0; i < centroids.size(); i++) {
+			printCentroids = printCentroids + Arrays.toString(centroids.get(i)) + "\r\n"; 
+		}				
+		System.out.print(printCentroids);
+		
+		
+		
+		int [] states = clusterer.clustClassify(clusters, lineData, busType);
+		String statePrint ="";
+		for (int i = 0; i < states.length ; i++) {
+			statePrint = statePrint + "Cluster " + i + " is state: " + stateNames[states[i]] +"\r\n";
+		}
+		System.out.println(statePrint);
+		
+		
 		
 		outputFileBuild(clusters);
+		
+		
+		
 		int k=0;
 		kNeighbours findk = new kNeighbours(clusters,k);
 		k=findk.optimumk();

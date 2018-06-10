@@ -87,9 +87,9 @@ public class Kmeans {
 	/*
 	 * Calculates the centroid locations
 	 * Args: the clustered data
-	 * Returns: the centroid locations of the clusters
+	 * Returns: the centroid locations of the clusters. Public is also called from run. 
 	 */
-	private ArrayList<double[]> calCentroid(ArrayList<ArrayList<double[]>> clusters) {
+	public ArrayList<double[]> calCentroid(ArrayList<ArrayList<double[]>> clusters) {
 		
 		ArrayList <double[]> newCentroids = new ArrayList<double[]>();
 
@@ -182,7 +182,7 @@ public class Kmeans {
 		return totCost;
 	}
 	
-	/* ONLY SET UP FOR 4 CLUSTERS
+	/* 
 	 * Classify the states from the centroids
 	 * Args: the clustered data
 	 * Returns: a string array of each state
@@ -190,93 +190,31 @@ public class Kmeans {
 	public int[] clustClassify(ArrayList<ArrayList<double[]>> clusters, int [][] lineData, int[] busData) {
 		
 		ArrayList<double[]> centroids = calCentroid(clusters);
+		double [] lineLimits = {0, 3.5, 10};
 		
 		// return array - which cluster to which state. {gen, line, peak, low}
-		int [] states = new int [clusters.size()];
+		int [] states = new int [centroids.size()];
 		
-		// Based on voltage angle differences
-		// Basic rules are as follows:
-		// If the delta on a generator bus is 0 then the generator must be off
-		// If the total delta (in and out) at a branch bus then a line must be tripped
-		// The two remaining states are high load and low load, which can be found summing the delta at the load buses
-		
-		// Static references - could fix. Gen bus data is in first three line data rows
-		// Check gen data
-		try {
-		boolean found = false;
-		for (int i = 0; i < centroids.size(); i++) {
-			for (int j = 0; j<3; j++) {
-				double genPF = centroids.get(i)[2*lineData[j][0]-1] - centroids.get(i)[2*lineData[j][1]-1];
-				if(genPF<0.1) {
-					found = true;
-					states[0] = i;
-					break;
-				}
+		// Based on rules described in classification document. Slack bus flow based. Slack bus always 0 angle can just base on Bus 4 angle
+		for(int i =0; i<centroids.size(); i++) {
+			double deltaAng14 = -centroids.get(i)[7];
+			System.out.println(deltaAng14);
+			if(deltaAng14 < lineLimits[0]) {
+				states[i] = 3; // Low load
+			}
+			else if (deltaAng14 < lineLimits[1]) {
+				states[i] = 1; // Line break
+			}
+			else if (deltaAng14 < lineLimits[2]) {
+				states[i] = 0; // Gen disconnected
+			}
+			else {
+				states[i] = 2; // Peak load
 			}
 
 		}
-		// if for some reason a bus isnt found throw exception
-		if (!found) 
-			throw new EntryMissingException();
-
-		// Check line data
-		found = false;
-		for (int i = 0; i < clusters.size(); i++) {
-			// Calc Bus 4 = (1-4) - (4-5) - (4-9)
-			double pb4 =  (centroids.get(i)[2*1-1] - centroids.get(i)[2*4-1]) +
-					(centroids.get(i)[2*5-1] - centroids.get(i)[2*4-1]) +
-					(centroids.get(i)[2*9-1] - centroids.get(i)[2*4-1]);
-			// Calc Bus 6 = (3-6) + (5-6) - (6-7)
-			double pb6 =  (centroids.get(i)[2*3-1] - centroids.get(i)[2*6-1]) +
-					(centroids.get(i)[2*5-1] - centroids.get(i)[2*6-1]) -
-					(centroids.get(i)[2*6-1] - centroids.get(i)[2*7-1]);
-			// Calc Bus 8 = (2-8) + (7-8) - (8-9)
-			double pb8 =  (centroids.get(i)[2*2-1] - centroids.get(i)[2*8-1]) +
-					(centroids.get(i)[2*7-1] - centroids.get(i)[2*8-1]) -
-					(centroids.get(i)[2*8-1] - centroids.get(i)[2*9-1]);
-			System.out.println("Lines"+ (pb4+pb6+pb8));
-			if(Math.abs(pb4+pb6+pb8) > 20) {
-				found = true;
-				states[1] = i;
-				break;
-			}
-		}
-		// if for some reason a line isnt found throw exception
-		if (!found) 
-			throw new EntryMissingException();
-		
-		// For the two remaining clusters calculate the one with highest load
-		int [] remainClust = {1,1,1,1};
-		remainClust[states[0]] = 0; 
-		remainClust[states[1]] = 0;
-		
-		int index = 0;
-		double [] loadTot = new double [2];
-		for (int i = 0; i < clusters.size(); i++) {
-			if (remainClust[i]==1) {
-				double load1 = (centroids.get(i)[2*4-1] - centroids.get(i)[2*5-1]) +
-						(centroids.get(i)[2*5-1] - centroids.get(i)[2*6-1]);
-				double load2 = (centroids.get(i)[2*6-1] - centroids.get(i)[2*7-1]) +
-						(centroids.get(i)[2*8-1] - centroids.get(i)[2*7-1]);
-				double load3 = (centroids.get(i)[2*4-1] - centroids.get(i)[2*9-1]) +
-						(centroids.get(i)[2*8-1] - centroids.get(i)[2*9-1]);
-				loadTot[index] = load1+load2+load3;
-				System.out.println(loadTot[index]);
-				states[2+index] = i;
-				index++;
-			}
-		}
-		if (loadTot[1]>loadTot[0]) {
-			int hold = states[2];
-			states[2] = states[3];
-			states[3] = hold;
-		}
-		
 		return states;
-		}catch(EntryMissingException e) {
-			System.out.println("Classify failed");
-			e.printStackTrace();
-			return null;
-		}
-	}
+	
+	}	
+	
 }
