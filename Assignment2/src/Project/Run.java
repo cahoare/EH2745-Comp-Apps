@@ -75,6 +75,7 @@ public class Run {
 	// Define kNN class variables for accessing in GUI
 	private static Identification dataTesting;
 	private static int optimalKNN;
+	private static  ArrayList<ArrayList<double[]>> clusterAdditions;
 	
 	protected Shell shlEhui;
 	private Text userKbox;
@@ -116,8 +117,9 @@ public class Run {
 	 */
 	public static void runKNN() {	
 		
-		kNN classification = new kNN(dataTesting, tableFormat, optimalKNN, clusters, statesClust);
-
+		kNN classifier = new kNN(dataTesting, tableFormat, optimalKNN, clusters, statesClust);
+		clusterAdditions = classifier.classification();
+		
 		System.out.println("After kNN classification:");
 		for (int x = 0; x < clusters.size(); x++) {
 
@@ -285,11 +287,11 @@ public class Run {
 	 */
 	protected void createContents() {
 		shlEhui = new Shell();
-		shlEhui.setSize(417, 418);
+		shlEhui.setSize(417, 406);
 		shlEhui.setText("EH2745-UI");
 
 		Composite composite = new Composite(shlEhui, SWT.NONE);
-		composite.setBounds(0, 10, 401, 359);
+		composite.setBounds(0, 10, 401, 355);
 
 		Button importData = new Button(composite, SWT.NONE);
 		importData.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
@@ -312,7 +314,7 @@ public class Run {
 		exportLocation.setText("Export Location");
 		exportLocation.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
 		exportLocation.setEnabled(false);
-		exportLocation.setBounds(16, 165, 120, 25);
+		exportLocation.setBounds(16, 134, 120, 25);
 
 		Label clusterSuccessBox = new Label(composite, SWT.BORDER | SWT.WRAP);
 		clusterSuccessBox.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
@@ -327,33 +329,33 @@ public class Run {
 		Label exportSuccessBox = new Label(composite, SWT.BORDER | SWT.WRAP);
 		exportSuccessBox.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
 		exportSuccessBox.setBackground(SWTResourceManager.getColor(SWT.COLOR_LIST_BACKGROUND));
-		exportSuccessBox.setBounds(141, 167, 120, 23);
+		exportSuccessBox.setBounds(141, 136, 120, 23);
 
 		Button viewClusters = new Button(composite, SWT.NONE);
 		viewClusters.setText("View Clusters");
 		viewClusters.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
 		viewClusters.setEnabled(false);
-		viewClusters.setBounds(16, 134, 120, 25);
+		viewClusters.setBounds(142, 182, 120, 25);
 		
 		Button viewOptimalK = new Button(composite, SWT.NONE);
 		viewOptimalK.setText("View K Number");
 		viewOptimalK.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
 		viewOptimalK.setEnabled(false);
-		viewOptimalK.setBounds(141, 135, 120, 25);
+		viewOptimalK.setBounds(269, 103, 120, 25);
 
 		Button exportToCSV = new Button(composite, SWT.NONE);
 		exportToCSV.setText("Export to CSV");
 		exportToCSV.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
 		exportToCSV.setEnabled(false);
-		exportToCSV.setBounds(269, 167, 120, 25);
+		exportToCSV.setBounds(269, 136, 120, 25);
 
 		Label label = new Label(composite, SWT.SEPARATOR | SWT.HORIZONTAL);
-		label.setBounds(16, 196, 373, 13);
+		label.setBounds(16, 165, 373, 13);
 
 		Label lblMatpowerFunctions = new Label(composite, SWT.NONE);
 		lblMatpowerFunctions.setText("k Means");
 		lblMatpowerFunctions.setFont(SWTResourceManager.getFont("Calibri", 10, SWT.BOLD));
-		lblMatpowerFunctions.setBounds(18, 52, 222, 13);
+		lblMatpowerFunctions.setBounds(18, 48, 222, 13);
 		
 		Button viewClustData = new Button(composite, SWT.NONE);
 		viewClustData.addSelectionListener(new SelectionAdapter() {
@@ -364,52 +366,66 @@ public class Run {
 		viewClustData.setText("View Cluster Data");
 		viewClustData.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
 		viewClustData.setEnabled(false);
-		viewClustData.setBounds(269, 135, 120, 25);
+		viewClustData.setBounds(269, 182, 120, 25);
 		
 		Label label_1 = new Label(composite, SWT.SEPARATOR | SWT.HORIZONTAL);
-		label_1.setBounds(16, 41, 373, 13);
+		label_1.setBounds(16, 37, 373, 13);
 		
 		Label lblKNearestNeighbour = new Label(composite, SWT.NONE);
 		lblKNearestNeighbour.setText("k Nearest Neighbour");
 		lblKNearestNeighbour.setFont(SWTResourceManager.getFont("Calibri", 10, SWT.BOLD));
-		lblKNearestNeighbour.setBounds(17, 208, 222, 13);
+		lblKNearestNeighbour.setBounds(17, 225, 222, 25);
 		
 		Button importTestD = new Button(composite, SWT.NONE);
 		importTestD.setText("Import Test Data");
 		importTestD.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
 		importTestD.setEnabled(false);
-		importTestD.setBounds(16, 227, 120, 25);
+		importTestD.setBounds(16, 250, 120, 25);
 		
 		Label importTestDLabel = new Label(composite, SWT.BORDER | SWT.WRAP);
 		importTestDLabel.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
 		importTestDLabel.setBackground(SWTResourceManager.getColor(SWT.COLOR_LIST_BACKGROUND));
-		importTestDLabel.setBounds(141, 228, 120, 23);
+		importTestDLabel.setBounds(141, 251, 120, 23);
 		
 		Button runKNN = new Button(composite, SWT.NONE);
 		runKNN.setText("Sort Test Data");
 		runKNN.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
 		runKNN.setEnabled(false);
-		runKNN.setBounds(16, 289, 120, 25);
+		runKNN.setBounds(16, 312, 120, 25);
 		
 		Label runKNNLabel = new Label(composite, SWT.BORDER | SWT.WRAP);
 		runKNNLabel.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
 		runKNNLabel.setBackground(SWTResourceManager.getColor(SWT.COLOR_LIST_BACKGROUND));
-		runKNNLabel.setBounds(142, 289, 120, 23);
+		runKNNLabel.setBounds(142, 312, 120, 23);
 		
 		Button optK = new Button(composite, SWT.NONE);
 		optK.setText("Find Optimal K");
 		optK.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
 		optK.setEnabled(false);
-		optK.setBounds(16, 258, 120, 25);
+		optK.setBounds(16, 281, 120, 25);
 		
 		userKbox = new Text(composite, SWT.BORDER);
-		userKbox.setBounds(142, 260, 120, 23);
+		userKbox.setBounds(142, 283, 120, 23);
 		
 		Button userK = new Button(composite, SWT.NONE);
 		userK.setText("Enter Own K");
 		userK.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
 		userK.setEnabled(false);
-		userK.setBounds(269, 258, 120, 25);
+		userK.setBounds(269, 281, 120, 25);
+		
+		Label label_2 = new Label(composite, SWT.SEPARATOR | SWT.HORIZONTAL);
+		label_2.setBounds(16, 213, 373, 13);
+		
+		Label lblResults = new Label(composite, SWT.NONE);
+		lblResults.setText("Results");
+		lblResults.setFont(SWTResourceManager.getFont("Calibri", 10, SWT.BOLD));
+		lblResults.setBounds(16, 186, 77, 13);
+		
+		Button knnResults = new Button(composite, SWT.NONE);
+		knnResults.setText("KNN Results");
+		knnResults.setFont(SWTResourceManager.getFont("Calibri", 9, SWT.NORMAL));
+		knnResults.setEnabled(false);
+		knnResults.setBounds(269, 312, 120, 25);
 
 		importData.addSelectionListener(new SelectionAdapter() {
 			@Override
@@ -429,7 +445,10 @@ public class Run {
 				importTestDLabel.setText("");
 				userK.setEnabled(false);
 				optK.setEnabled(false);
-				
+				knnResults.setEnabled(false);
+				runKNN.setEnabled(false);
+				runKNNLabel.setText("");
+			
 				
 			
 			}
@@ -556,6 +575,9 @@ public class Run {
 				importTestDLabel.setText("Success!");
 				userK.setEnabled(true);
 				optK.setEnabled(true);
+				knnResults.setEnabled(false);
+				runKNN.setEnabled(false);
+				
 			}
 		});
 		
@@ -564,6 +586,7 @@ public class Run {
 			public void widgetSelected(SelectionEvent e) {
 				runKNN();
 				runKNNLabel.setText("Success!");
+				knnResults.setEnabled(true);
 			}
 		});
 	
@@ -597,6 +620,29 @@ public class Run {
 			}
 		});
 		
+		
+		knnResults.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+			
+				// Format the data into a string for viewing
+				// Present the cluster sizes and states
+				String output ="New Data Added to the Clusters \r\n \r\n"; 
+				
+				for (int i =0; i<clusterAdditions.size(); i++) {
+					output = output+ "Cluster " + i + " has " + clusterAdditions.get(i).size() + " entries and corresponds to state " + stateNames[statesClust[i]] + "\r\n";
+				}
+
+				// Create window
+				try {
+					DataViewer ybusViewer = new DataViewer();
+					ybusViewer.open(output);
+				} catch (Exception f) {
+					f.printStackTrace();
+				}
+
+			}
+		});
 	}
 	
 }

@@ -6,25 +6,31 @@ import java.util.Collections;
 
 public class kNN {
 
-	private ArrayList<Integer> times; // timestamps
 	private ArrayList<double[]> values; // actual data
-	private final double error = 0.01;
 	private ArrayList<ArrayList<double[]>> clustersvalues = new ArrayList<ArrayList<double[]>>();
-	// TABLE information
-	private String[] tableFormat;
 	private int k;
 
 	public kNN(Identification dataTesting, String[] tableFormat, int k, ArrayList<ArrayList<double[]>> clustersvalues,
 			int[] states) {
+		
 		values = dataTesting.getDataTable();
-		times = dataTesting.getTimeStamps();
-		this.tableFormat = tableFormat;
 		this.clustersvalues = clustersvalues;
+		
 		this.k = k;
-		classification();
 	}
 
-	public void classification() {
+	
+	/* Method - calculates distance between the value and all terms and returns distance
+	 * Param - sample being tested
+	 * Returns - sorted array of distances
+	 */
+	public ArrayList<ArrayList<double[]>> classification() {
+		
+		ArrayList<ArrayList<double[]>> clusterAdditions = new ArrayList<ArrayList<double[]>>();
+		for(int i =0; i< clustersvalues.size(); i++) {
+			clusterAdditions.add(new ArrayList<double[]>());
+		}
+		
 		for (int b = 0; b < values.size(); b++) {
 
 			int[] firstkn = new int[clustersvalues.size()]; // array of number of clusters size
@@ -33,12 +39,19 @@ public class kNN {
 			for (int u = 0; u < k; u++) {
 				firstkn[(int) sorteddistances.get(u)[1]]++;
 			}
-			clustersvalues.get(getIndexOfLargest(firstkn)).add(values.get(b));
+			clusterAdditions.get(getIndexOfLargest(firstkn)).add(values.get(b));
+			clustersvalues.get(getIndexOfLargest(firstkn)).add(values.get(b));	
 		}
+		
+		return clusterAdditions;
 
 	}
-
-	public ArrayList<double[]> distancecalculation(double[] trainingsample) {
+	
+	/* Method - calculates distance between the value and all terms and returns distance
+	 * Param - sample being tested
+	 * Returns - sorted array of distances
+	 */
+	public ArrayList<double[]> distancecalculation(double[] sample) {
 
 		ArrayList<double[]> distancelist = new ArrayList<double[]>();
 		ArrayList<double[]> distancelistsorted = new ArrayList<double[]>();
@@ -50,7 +63,7 @@ public class kNN {
 				double[] distance = new double[2];
 				distance[0] = 0;
 				for (int a = 0; a < clustersvalues.get(o).get(p).length; a++) {
-					distance[0] += Math.pow((trainingsample[a] - clustersvalues.get(o).get(p)[a]), 2);
+					distance[0] += Math.pow((sample[a] - clustersvalues.get(o).get(p)[a]), 2);
 				}
 				distance[0] = Math.sqrt(distance[0]);
 				distance[1] = (double) (o); // to indicate that distance is to a esceario in cluster o
