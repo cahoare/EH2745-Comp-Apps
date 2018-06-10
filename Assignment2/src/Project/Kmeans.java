@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 
-// Notes for improvement...
-// Add in initialisation randomisation... ??? Easy
 
 public class Kmeans {
 
